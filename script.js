@@ -1,7 +1,7 @@
 // 1. CẤU HÌNH ĐƯỜNG DẪN API (Tự động nhận diện local hoặc online)
 const API_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
                 ? "http://localhost:5000/api" 
-                : "https://baitapweb-15v8.onrender.com"; // <-- Thay link Render của bạn vào đây
+                : "https://baitapweb-15v8.onrender.com/api"; // <-- Thay link Render của bạn vào đây
 
 let currentData = [];
 let currentLang = ""; 
@@ -430,3 +430,4 @@ function startFocusMode() {
     showScreen('exam-screen');
 
 }
+
