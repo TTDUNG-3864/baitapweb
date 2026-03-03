@@ -1,0 +1,15 @@
+/* Khóa ô input không cho click hay gõ phím nữa sau khi đã ấn Enter */
+.input-locked { 
+    pointer-events: none; 
+}
+
+/* Các class dùng để báo đúng/sai (TRUE/FALSE) ở cột Check */
+.check-true {
+    background-color: #22c55e !important; /* Xanh lá cây */
+    color: white;
+}
+
+.check-false {
+    background-color: #dc2626 !important; /* Đỏ */
+    color: white;
+}

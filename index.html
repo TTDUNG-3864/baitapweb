@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ôn Tập Từ Vựng</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* CSS tuỳ chỉnh thêm cho bảng */
+        .input-locked { background-color: #f3f4f6; color: #6b7280; }
+        .check-true { color: #16a34a; background-color: #dcfce3; }
+        .check-false { color: #dc2626; background-color: #fee2e2; }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans min-h-screen">
+
+    <div id="login-screen" class="screen flex items-center justify-center min-h-screen">
+        <div class="bg-white p-8 rounded-lg shadow-md w-96">
+            <h2 class="text-2xl font-bold mb-6 text-center text-blue-600">Hệ Thống Ôn Tập</h2>
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2">Tên tài khoản</label>
+                <input id="username" type="text" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Nhập tài khoản...">
+            </div>
+            <div class="mb-6">
+                <label class="block text-gray-700 text-sm font-bold mb-2">Mật khẩu</label>
+                <input id="password" type="password" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Nhập mật khẩu...">
+            </div>
+            <div class="flex items-center justify-between gap-2">
+                <button onclick="login()" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-1/2">
+                    Đăng Nhập
+                </button>
+                <button onclick="register()" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-1/2">
+                    Đăng Ký
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="dashboard-screen" class="screen hidden container mx-auto p-4 max-w-4xl mt-10">
+        <div class="flex justify-between items-center bg-white p-4 rounded shadow mb-6">
+            <div>
+                <span class="font-bold text-lg">Chào bạn, <span id="display-name" class="text-blue-600"></span>!</span>
+            </div>
+            <button onclick="logout()" class="text-red-500 font-bold hover:underline">Đăng Xuất</button>
+        </div>
+
+        <h1 class="text-3xl font-bold text-center mb-8">Bạn muốn học tiếng gì hôm nay?</h1>
+        
+        <div class="grid grid-cols-2 gap-6">
+            <div class="bg-white p-6 rounded-lg shadow text-center cursor-pointer hover:shadow-lg transition border-t-4 border-blue-500" onclick="showExamList('Anh')">
+                <h2 class="text-2xl font-bold mb-4">🇺🇸 Tiếng Anh</h2>
+                <p class="text-gray-600 mb-4">Vào xem danh sách bộ đề Tiếng Anh của bạn và mọi người.</p>
+                <button class="bg-blue-500 text-white px-4 py-2 rounded font-bold">Xem Danh Sách</button>
+            </div>
+            
+            <div class="bg-white p-6 rounded-lg shadow text-center cursor-pointer hover:shadow-lg transition border-t-4 border-red-500" onclick="showExamList('Trung')">
+                <h2 class="text-2xl font-bold mb-4">🇨🇳 Tiếng Trung</h2>
+                <p class="text-gray-600 mb-4">Vào xem danh sách bộ đề Tiếng Trung của bạn và mọi người.</p>
+                <button class="bg-red-500 text-white px-4 py-2 rounded font-bold">Xem Danh Sách</button>
+            </div>
+        </div>
+
+        <div class="mt-8 text-center">
+            <label class="cursor-pointer bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg shadow inline-block">
+                + Tải File Excel Mới Lên
+                <input type="file" id="file-upload" class="hidden" accept=".xlsx, .xls" onchange="handleFileUpload(event)">
+            </label>
+        </div>
+    </div>
+
+    <div id="upload-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-96">
+            <h3 class="text-xl font-bold mb-4">Cài đặt file tải lên</h3>
+            
+            <label class="block text-sm font-bold mb-2">Tên bộ đề:</label>
+            <input type="text" id="upload-exam-name" class="border w-full p-2 rounded mb-4 focus:ring-2 focus:ring-green-500">
+            
+            <label class="block text-sm font-bold mb-2">Quyền riêng tư:</label>
+            <div class="flex gap-2 mb-6">
+                <button id="btn-share" onclick="selectShareOption(true)" class="flex-1 py-2 px-2 border rounded font-semibold text-sm transition bg-gray-200 text-gray-700 border-gray-300">
+                    🌍 Chia sẻ mọi người
+                </button>
+                <button id="btn-private" onclick="selectShareOption(false)" class="flex-1 py-2 px-2 border rounded font-semibold text-sm transition bg-green-500 text-white border-green-600">
+                    🔒 Không chia sẻ
+                </button>
+            </div>
+
+            <label class="block text-sm font-bold mb-2">Chọn ngôn ngữ để lưu:</label>
+            <div class="flex gap-2">
+                <button type="button" onclick="confirmUpload('Anh')" class="flex-1 bg-blue-500 text-white py-2 rounded font-bold hover:bg-blue-600">Tiếng Anh</button>
+                <button type="button" onclick="confirmUpload('Trung')" class="flex-1 bg-red-500 text-white py-2 rounded font-bold hover:bg-red-600">Tiếng Trung</button>
+            </div>
+            <button onclick="closeUploadModal()" class="mt-4 w-full text-gray-500 hover:text-gray-800 font-bold">Hủy</button>
+        </div>
+    </div>
+
+    <div id="exam-list-screen" class="screen hidden container mx-auto p-4 max-w-4xl mt-10">
+        <div class="flex justify-between items-center mb-6">
+            <h2 id="list-title" class="text-2xl font-bold">Danh sách bộ đề</h2>
+            <button onclick="goHome()" class="bg-gray-500 text-white px-4 py-2 rounded font-bold hover:bg-gray-600">← Quay Lại</button>
+        </div>
+        <div id="exam-list-container" class="flex flex-col gap-4">
+            </div>
+    </div>
+
+    <div id="exam-screen" class="screen hidden container mx-auto p-4 max-w-5xl mt-6">
+        <div class="flex justify-between items-center mb-4 bg-white p-4 shadow rounded">
+            <div>
+                <h2 id="exam-title" class="text-xl font-bold text-blue-700">Tên Bộ Đề</h2>
+                <span id="exam-mode" class="bg-yellow-200 text-yellow-800 text-xs font-bold px-2 py-1 rounded">Chế độ Thường</span>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="showExamList(currentLang)" class="bg-gray-500 text-white px-4 py-2 rounded font-bold hover:bg-gray-600">Thoát</button>
+                <button onclick="submitExam()" class="bg-green-600 text-white px-4 py-2 rounded font-bold hover:bg-green-700">Nộp Bài / Chấm Điểm</button>
+            </div>
+        </div>
+
+        <div class="bg-white shadow rounded overflow-hidden">
+            <table class="w-full border-collapse">
+                <thead class="bg-gray-800 text-white">
+                    <tr>
+                        <th class="border p-2 w-1/5">TỪ GỐC</th>
+                        <th class="border p-2 w-1/6">PHIÊN ÂM</th>
+                        <th class="border p-2 w-1/3">NGHĨA</th>
+                        <th id="col-lang" class="border p-2 w-1/5 bg-blue-600">TIẾNG ...</th>
+                        <th class="border p-2 w-24">CHECK</th>
+                    </tr>
+                </thead>
+                <tbody id="exam-body">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="result-screen" class="screen hidden container mx-auto p-4 flex items-center justify-center min-h-screen">
+        <div class="bg-white p-10 rounded-lg shadow-xl text-center max-w-lg w-full">
+            <h2 class="text-3xl font-bold mb-4">Kết Quả</h2>
+            <div class="text-6xl font-black text-blue-600 mb-6"><span id="score-display">0</span>%</div>
+            <p id="result-message" class="text-lg font-bold mb-8"></p>
+            
+            <div class="flex flex-col gap-3">
+                <button onclick="retryExam()" class="bg-blue-500 text-white font-bold py-3 rounded hover:bg-blue-600">Làm lại bộ đề này</button>
+                <button id="btn-focus" onclick="startFocusMode()" class="bg-purple-600 text-white font-bold py-3 rounded hover:bg-purple-700 disabled:opacity-50" disabled>
+                    Vòng Trọng Tâm
+                </button>
+                <button onclick="goHome()" class="bg-gray-500 text-white font-bold py-3 rounded hover:bg-gray-600">Về Trang Chủ</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
