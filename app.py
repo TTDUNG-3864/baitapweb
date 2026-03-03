@@ -11,7 +11,7 @@ CORS(app)
 # THÔNG TIN KẾT NỐI SUPABASE CỦA BẠN
 # Lưu ý: Mình dùng cổng 5432 chuẩn, nếu vẫn báo Network Unreachable, 
 # hãy kiểm tra lại mật khẩu TTDUNG2006!! trên Supabase.
-DB_URL = "postgresql://postgres:TTDUNG2006!!@db.apsbtgpnihsxsfuuvbor.supabase.co:5432/postgres"
+DB_URL = "postgresql://postgres:TTDUNG2006!!@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres"
 
 def get_db_connection():
     try:
@@ -198,3 +198,4 @@ if __name__ == '__main__':
     init_db()
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
+
