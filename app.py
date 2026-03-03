@@ -218,6 +218,9 @@ def save_result():
     conn.commit()
     conn.close()
     return jsonify({"status": "success", "message": "Đã lưu điểm thành công!"})
+@app.route('/ping')
+def ping():
+    return "PONG", 200
 
 # ==========================================
 # KHỞI CHẠY SERVER
@@ -230,4 +233,5 @@ if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     
     print(f"🚀 Server đang chạy tại cổng {port}...")
+
     app.run(host='0.0.0.0', port=port, debug=True)
