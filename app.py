@@ -9,7 +9,7 @@ app = Flask(__name__)
 CORS(app) 
 
 # CHUỖI KẾT NỐI SUPABASE
-DB_URL = "postgresql://postgres:Ttdung2006@@@db.ymruhjgvbebzqofhfeha.supabase.co:5432/postgres"
+DB_URL = "postgresql://postgres:Ttdung2006!!@db.lkwrqouankkfotcufnzt.supabase.co:5432/postgres"
 
 def get_db_connection():
     try:
@@ -229,3 +229,4 @@ if __name__ == '__main__':
     # host 0.0.0.0 là bắt buộc để Render có thể nhận diện service
     app.run(host='0.0.0.0', port=port)
     
+
