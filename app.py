@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 import sqlite3
 import pandas as pd
@@ -17,6 +17,25 @@ def get_db_connection():
     # Cấu hình này giúp chúng ta lấy dữ liệu theo tên cột (giống SQL Server)
     conn.row_factory = sqlite3.Row 
     return conn
+
+# ==========================================
+# PHỤC VỤ FILE GIAO DIỆN (FRONTEND)
+# ==========================================
+
+# 1. Khi truy cập link gốc (/) sẽ trả về file index.html
+@app.route('/')
+def index():
+    return send_from_directory('.', 'index.html')
+
+# 2. Giúp trình duyệt tìm thấy các file script.js, style.css...
+@app.route('/<path:path>')
+def static_proxy(path):
+    return send_from_directory('.', path)
+
+# 3. Hàm ping để giữ web luôn thức (Dùng cho cron-job.org)
+@app.route('/ping')
+def ping():
+    return "PONG", 200
 
 # ==========================================
 # KHỞI TẠO DATABASE (SQLITE SETUP)
@@ -132,7 +151,6 @@ def get_exams(lang):
     user_id = request.args.get('user_id')
     conn = get_db_connection()
     
-    # Lấy đề của chính bạn HOẶC đề được người khác chia sẻ (is_shared = 1)
     query = """
         SELECT b.id, b.ten_bo, b.nguoi_tao_id, b.is_shared, COUNT(t.id) as word_count 
         FROM bo_tu_vung b
@@ -177,12 +195,10 @@ def upload_file():
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Tạo bộ đề mới
         cursor.execute("INSERT INTO bo_tu_vung (ten_bo, ngon_ngu, nguoi_tao_id, is_shared) VALUES (?, ?, ?, ?)", 
                        (exam_name, lang.upper(), user_id, is_shared))
         bo_id = cursor.lastrowid
         
-        # Duyệt qua các dòng trong Excel để lưu từ vựng
         for _, row in df.iterrows():
             tu_goc = str(row.iloc[0]).strip()
             if tu_goc:
@@ -218,9 +234,6 @@ def save_result():
     conn.commit()
     conn.close()
     return jsonify({"status": "success", "message": "Đã lưu điểm thành công!"})
-@app.route('/ping')
-def ping():
-    return "PONG", 200
 
 # ==========================================
 # KHỞI CHẠY SERVER
@@ -229,9 +242,8 @@ if __name__ == '__main__':
     # Khởi tạo database trước khi chạy app
     init_db()
     
-    # Render sẽ cung cấp biến môi trường PORT, nếu chạy ở máy thì mặc định là 5000
+    # Render cung cấp biến PORT, chạy local thì mặc định là 5000
     port = int(os.environ.get("PORT", 5000))
     
     print(f"🚀 Server đang chạy tại cổng {port}...")
-
     app.run(host='0.0.0.0', port=port, debug=True)
