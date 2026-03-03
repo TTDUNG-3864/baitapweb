@@ -2,4 +2,4 @@ flask
 flask-cors
 pandas
 openpyxl
-pyodbc
+psycopg2-binary
