@@ -9,14 +9,16 @@ app = Flask(__name__)
 CORS(app) 
 
 # Tên file database (Sẽ tự động tạo file data.db trong thư mục dự án)
-DB_FILE = 'data.db'
+DB_URL = "postgresql://postgres:Ttdung2006@@@db.ymruhjgvbebzqofhfeha.supabase.co:5432/postgres"
 
 def get_db_connection():
-    # Kết nối tới SQLite
-    conn = sqlite3.connect(DB_FILE)
-    # Cấu hình này giúp chúng ta lấy dữ liệu theo tên cột (giống SQL Server)
-    conn.row_factory = sqlite3.Row 
-    return conn
+    try:
+        # Sử dụng psycopg2 để kết nối PostgreSQL
+        conn = psycopg2.connect(DB_URL, cursor_factory=RealDictCursor)
+        return conn
+    except Exception as e:
+        print("Lỗi kết nối Supabase rồi bạn ơi:", e)
+        return None
 
 # ==========================================
 # PHỤC VỤ FILE GIAO DIỆN (FRONTEND)
@@ -247,3 +249,4 @@ if __name__ == '__main__':
     
     print(f"🚀 Server đang chạy tại cổng {port}...")
     app.run(host='0.0.0.0', port=port, debug=True)
+
