@@ -1,30 +1,82 @@
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
-import psycopg2
-from psycopg2.extras import RealDictCursor
+import sqlite3
 import pandas as pd
 import os
+import io
+import time
+from supabase import create_client, Client
 
 app = Flask(__name__)
 CORS(app) 
 
-# THÔNG TIN KẾT NỐI SUPABASE CỦA BẠN
-# Lưu ý: Mình dùng cổng 5432 chuẩn, nếu vẫn báo Network Unreachable, 
-# hãy kiểm tra lại mật khẩu TTDUNG2006!! trên Supabase.
-DB_URL = "postgresql://postgres:TTDUNG2006!!@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres"
+# ================= CẤU HÌNH SUPABASE =================
+# Dán URL và chuỗi khóa anon/public của ông vào đây nhé:
+SUPABASE_URL = "https://lqjemrfjvcwvsfotvefx.supabase.co"
+SUPABASE_KEY = "sb_publishable_l1OkHC3hXth8FNVap7-nag_nqTmWRz5"
+
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+BUCKET_NAME = "excel_files" # Tên kho ông vừa tạo
+
+# ================= CẤU HÌNH DATABASE SQLITE =================
+DB_FILE = 'data.db'
 
 def get_db_connection():
-    try:
-        # Thiết lập kết nối với timeout để tránh treo server
-        conn = psycopg2.connect(DB_URL, cursor_factory=RealDictCursor, connect_timeout=10)
-        return conn
-    except Exception as e:
-        print(f"❌ Lỗi kết nối Supabase: {e}")
-        return None
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row 
+    return conn
 
-# ==========================================
-# PHỤC VỤ GIAO DIỆN & PING (Sửa lỗi 404)
-# ==========================================
+def init_db():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT NOT NULL UNIQUE,
+        password TEXT NOT NULL,
+        role TEXT DEFAULT 'user',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+    
+    # Cột drive_file_id giờ mình dùng để lưu Tên File trên Supabase Storage
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS bo_tu_vung (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ten_bo TEXT NOT NULL,
+        ngon_ngu TEXT NOT NULL,
+        nguoi_tao_id INTEGER,
+        is_shared INTEGER DEFAULT 0,
+        drive_file_id TEXT NOT NULL, 
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (nguoi_tao_id) REFERENCES users(id)
+    )
+    """)
+    
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS lich_su_hoc (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        bo_id INTEGER NOT NULL,
+        diem_so REAL NOT NULL,
+        ngay_lam DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id),
+        FOREIGN KEY (bo_id) REFERENCES bo_tu_vung(id)
+    )
+    """)
+
+    try:
+        cursor.execute("INSERT INTO users (username, password, role) VALUES (?, ?, ?)", 
+                       ('admin_dung', 'admin123', 'admin'))
+    except sqlite3.IntegrityError:
+        pass
+    
+    conn.commit()
+    conn.close()
+    print("✅ Database SQLite & Supabase Storage đã sẵn sàng!")
+
+# ================= CÁC API XỬ LÝ =================
 
 @app.route('/')
 def index():
@@ -34,121 +86,30 @@ def index():
 def static_proxy(path):
     return send_from_directory('.', path)
 
-@app.route('/ping')
-def ping():
-    return "PONG", 200
-
-# ==========================================
-# KHỞI TẠO DATABASE
-# ==========================================
-def init_db():
-    conn = get_db_connection()
-    if not conn: 
-        print("⚠️ Server khởi động nhưng chưa kết nối được DB. Vui lòng kiểm tra Logs!")
-        return
-    cursor = conn.cursor()
-    # Khởi tạo các bảng theo chuẩn PostgreSQL
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id SERIAL PRIMARY KEY,
-            username VARCHAR(50) NOT NULL UNIQUE,
-            password VARCHAR(100) NOT NULL,
-            role VARCHAR(20) DEFAULT 'user'
-        );
-        CREATE TABLE IF NOT EXISTS bo_tu_vung (
-            id SERIAL PRIMARY KEY,
-            ten_bo TEXT NOT NULL,
-            ngon_ngu TEXT NOT NULL,
-            nguoi_tao_id INTEGER,
-            is_shared INTEGER DEFAULT 0
-        );
-        CREATE TABLE IF NOT EXISTS tu_vung (
-            id SERIAL PRIMARY KEY,
-            bo_id INTEGER NOT NULL,
-            tu_goc TEXT NOT NULL,
-            phien_am TEXT,
-            nghia TEXT NOT NULL,
-            FOREIGN KEY (bo_id) REFERENCES bo_tu_vung(id) ON DELETE CASCADE
-        );
-    """)
-    conn.commit()
-    cursor.close()
-    conn.close()
-    print("✅ Đã kết nối và đồng bộ hóa bảng dữ liệu trên Supabase!")
-
-# ==========================================
-# CÁC API HỆ THỐNG
-# ==========================================
-
 @app.route('/api/register', methods=['POST'])
 def register():
     data = request.json
     conn = get_db_connection()
-    if not conn: return jsonify({"status": "error", "message": "Kết nối DB thất bại!"}), 500
-    cursor = conn.cursor()
     try:
-        cursor.execute("INSERT INTO users (username, password) VALUES (%s, %s)", 
-                       (data['username'], data['password']))
+        conn.execute("INSERT INTO users (username, password) VALUES (?, ?)", (data.get('username'), data.get('password')))
         conn.commit()
         return jsonify({"status": "success", "message": "Đăng ký thành công!"})
-    except Exception as e:
-        return jsonify({"status": "error", "message": "Tài khoản đã tồn tại!"}), 400
+    except sqlite3.IntegrityError:
+        return jsonify({"status": "error", "message": "Tên tài khoản đã tồn tại!"}), 400
     finally:
-        cursor.close()
         conn.close()
 
 @app.route('/api/login', methods=['POST'])
 def login():
     data = request.json
     conn = get_db_connection()
-    if not conn: return jsonify({"status": "error", "message": "Kết nối DB thất bại!"}), 500
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM users WHERE username = %s AND password = %s", 
-                   (data['username'], data['password']))
-    user = cursor.fetchone()
-    cursor.close()
+    user = conn.execute("SELECT * FROM users WHERE username = ? AND password = ?", (data.get('username'), data.get('password'))).fetchone()
     conn.close()
     if user:
-        return jsonify({
-            "status": "success", 
-            "user_id": user['id'], 
-            "username": user['username']
-        })
+        return jsonify({"status": "success", "user_id": user['id'], "username": user['username']})
     return jsonify({"status": "error", "message": "Sai tài khoản hoặc mật khẩu!"}), 401
 
-@app.route('/api/exams/<lang>', methods=['GET'])
-def get_exams(lang):
-    user_id = request.args.get('user_id')
-    conn = get_db_connection()
-    if not conn: return jsonify({"status": "error", "data": []}), 500
-    cursor = conn.cursor()
-    query = """
-        SELECT b.id, b.ten_bo, b.nguoi_tao_id, b.is_shared, COUNT(t.id) as word_count 
-        FROM bo_tu_vung b
-        LEFT JOIN tu_vung t ON b.id = t.bo_id
-        WHERE UPPER(b.ngon_ngu) = %s AND (b.nguoi_tao_id = %s OR b.is_shared = 1)
-        GROUP BY b.id, b.ten_bo, b.nguoi_tao_id, b.is_shared
-    """
-    cursor.execute(query, (lang.upper(), user_id))
-    rows = cursor.fetchall()
-    exams = [{"id": r['id'], "name": r['ten_bo'], "is_mine": str(r['nguoi_tao_id']) == str(user_id), 
-              "is_shared": bool(r['is_shared']), "word_count": r['word_count']} for r in rows]
-    cursor.close()
-    conn.close()
-    return jsonify({"status": "success", "data": exams})
-
-@app.route('/api/exam/<int:exam_id>', methods=['GET'])
-def get_exam_details(exam_id):
-    conn = get_db_connection()
-    if not conn: return jsonify({"status": "error", "data": []}), 500
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM tu_vung WHERE bo_id = %s", (exam_id,))
-    rows = cursor.fetchall()
-    words = [{"id": r['id'], "tu_goc": r['tu_goc'], "phien_am": r['phien_am'], "nghia": r['nghia']} for r in rows]
-    cursor.close()
-    conn.close()
-    return jsonify({"status": "success", "data": words})
-
+# --- UPLOAD FILE LÊN SUPABASE ---
 @app.route('/api/upload', methods=['POST'])
 def upload_file():
     file = request.files['file']
@@ -156,46 +117,128 @@ def upload_file():
     lang = request.form.get('lang')
     user_id = request.form.get('user_id')
     is_shared = 1 if request.form.get('is_shared') == 'true' else 0
-    try:
-        df = pd.read_excel(file).fillna("")
-        conn = get_db_connection()
-        if not conn: return jsonify({"status": "error", "message": "DB Connection Error"}), 500
-        cursor = conn.cursor()
-        # Chèn bộ đề và lấy ID trả về
-        cursor.execute("INSERT INTO bo_tu_vung (ten_bo, ngon_ngu, nguoi_tao_id, is_shared) VALUES (%s, %s, %s, %s) RETURNING id", 
-                       (exam_name, lang.upper(), user_id, is_shared))
-        bo_id = cursor.fetchone()['id']
-        
-        for _, row in df.iterrows():
-            tu_goc = str(row.iloc[0]).strip()
-            if tu_goc:
-                cursor.execute("INSERT INTO tu_vung (bo_id, tu_goc, phien_am, nghia) VALUES (%s, %s, %s, %s)",
-                               (bo_id, tu_goc, str(row.iloc[1]), str(row.iloc[2])))
-        conn.commit()
-        return jsonify({"status": "success", "message": "Upload thành công!"})
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
-    finally:
-        if conn:
-            cursor.close()
-            conn.close()
+    
+    if not file or file.filename == '':
+        return jsonify({"status": "error", "message": "Chưa chọn file"}), 400
 
+    try:
+        # Tạo tên file độc nhất tránh trùng lặp
+        file_ext = os.path.splitext(file.filename)[1]
+        unique_filename = f"{int(time.time())}_{user_id}{file_ext}"
+        
+        # Đọc dữ liệu file
+        file_bytes = file.read()
+        
+        # Đẩy thẳng byte lên Supabase Storage
+        res = supabase.storage.from_(BUCKET_NAME).upload(
+            file=file_bytes,
+            path=unique_filename,
+            file_options={"content-type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}
+        )
+        
+        # Lưu vào SQLite (Cột drive_file_id giờ chứa unique_filename)
+        conn = get_db_connection()
+        conn.execute("INSERT INTO bo_tu_vung (ten_bo, ngon_ngu, nguoi_tao_id, is_shared, drive_file_id) VALUES (?, ?, ?, ?, ?)", 
+                     (exam_name, lang.upper(), user_id, is_shared, unique_filename))
+        conn.commit()
+        conn.close()
+        
+        return jsonify({"status": "success", "message": "Đã lưu bộ đề lên Cloud thành công!"})
+    except Exception as e:
+        print(f"❌ LỖI UPLOAD SUPABASE: {str(e)}")
+        return jsonify({"status": "error", "message": "Lỗi lưu file, xem Terminal!"}), 500
+
+@app.route('/api/exams/<lang>', methods=['GET'])
+def get_exams(lang):
+    user_id = request.args.get('user_id')
+    conn = get_db_connection()
+    query = """
+        SELECT id, ten_bo, nguoi_tao_id, is_shared, drive_file_id 
+        FROM bo_tu_vung 
+        WHERE UPPER(ngon_ngu) = ? AND (nguoi_tao_id = ? OR is_shared = 1)
+    """
+    rows = conn.execute(query, (lang.upper(), user_id)).fetchall()
+    
+    exams = []
+    for r in rows:
+        exams.append({
+            "id": r['id'], 
+            "name": r['ten_bo'], 
+            "is_mine": str(r['nguoi_tao_id']) == str(user_id), 
+            "is_shared": bool(r['is_shared']),
+            "drive_file_id": r['drive_file_id']
+        })
+    conn.close()
+    return jsonify({"status": "success", "data": exams})
+
+# --- LẤY FILE TỪ SUPABASE VÀ ĐỌC ---
+@app.route('/api/exam/<int:exam_id>', methods=['GET'])
+def get_exam_details(exam_id):
+    try:
+        conn = get_db_connection()
+        exam_row = conn.execute("SELECT drive_file_id FROM bo_tu_vung WHERE id = ?", (exam_id,)).fetchone()
+        conn.close()
+        
+        if not exam_row:
+            return jsonify({"status": "error", "message": "Không tìm thấy bộ đề trong DB"}), 404
+            
+        file_path = exam_row['drive_file_id']
+
+        # Tải thẳng dữ liệu file từ Supabase Storage về dạng byte
+        res = supabase.storage.from_(BUCKET_NAME).download(file_path)
+        
+        fh = io.BytesIO(res)
+        df = pd.read_excel(fh).fillna("")
+        
+        words = []
+        for index, row in df.iterrows():
+             tu_goc = str(row.iloc[0]).strip()
+             if tu_goc:
+                 words.append({
+                     "id": index, 
+                     "tu_goc": tu_goc, 
+                     "phien_am": str(row.iloc[1]) if len(row) > 1 else "", 
+                     "nghia": str(row.iloc[2]) if len(row) > 2 else ""
+                 })
+                 
+        return jsonify({"status": "success", "data": words})
+    except Exception as e:
+        print(f"❌ LỖI TẢI FILE SUPABASE: {str(e)}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+# --- XÓA FILE TRÊN SUPABASE VÀ XÓA DB ---
 @app.route('/api/exam/<int:exam_id>', methods=['DELETE'])
 def delete_exam(exam_id):
     conn = get_db_connection()
-    if not conn: return jsonify({"status": "error", "message": "DB Error"}), 500
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM bo_tu_vung WHERE id = %s", (exam_id,))
-    conn.commit()
-    cursor.close()
-    conn.close()
-    return jsonify({"status": "success", "message": "Đã xóa bộ đề!"})
+    try:
+        exam_row = conn.execute("SELECT drive_file_id FROM bo_tu_vung WHERE id = ?", (exam_id,)).fetchone()
+        if exam_row and exam_row['drive_file_id']:
+            try:
+                # Xóa file trong kho Supabase
+                supabase.storage.from_(BUCKET_NAME).remove([exam_row['drive_file_id']])
+            except Exception as e:
+                print("Lỗi xóa file Cloud (có thể file đã bị xóa trước đó):", e)
+        
+        conn.execute("DELETE FROM bo_tu_vung WHERE id = ?", (exam_id,))
+        conn.execute("DELETE FROM lich_su_hoc WHERE bo_id = ?", (exam_id,))
+        conn.commit()
+        return jsonify({"status": "success", "message": "Đã xóa bộ đề sạch sẽ!"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+    finally:
+        conn.close()
 
-# ==========================================
-# KHỞI CHẠY
-# ==========================================
+@app.route('/api/save_result', methods=['POST'])
+def save_result():
+    data = request.json
+    conn = get_db_connection()
+    conn.execute("INSERT INTO lich_su_hoc (user_id, bo_id, diem_so) VALUES (?, ?, ?)", 
+                 (data.get('user_id'), data.get('exam_id'), float(data.get('score'))))
+    conn.commit()
+    conn.close()
+    return jsonify({"status": "success", "message": "Đã lưu điểm thành công!"})
+
 if __name__ == '__main__':
     init_db()
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host='0.0.0.0', port=port)
-
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port, debug=True)
