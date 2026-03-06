@@ -202,6 +202,10 @@ function toggleColumns() {
 function renderTable(data) {
     let tbody = document.getElementById('exam-body');
     tbody.innerHTML = "";
+    
+    // Kiểm tra xem có đang dùng điện thoại không
+    let isMobile = window.innerWidth < 768;
+
     data.forEach((item, index) => {
         let tr = document.createElement('tr');
         
@@ -213,19 +217,24 @@ function renderTable(data) {
         let c_phienam = hidePhienAm ? "text-gray-400" : "text-black";
         let c_nghia = hideNghia ? "text-gray-400" : "text-black";
 
+        // TỰ ĐỘNG ĐIỀU CHỈNH SIZE CHỮ CHO MOBILE
         let isTrung = (currentLang === 'Trung');
-        let fontTuGoc = isTrung ? "font-family: 'KaiTi', 'STKaiti', serif; font-size: 1.5rem;" : "";
-        let fontInput = isTrung ? "font-family: 'KaiTi', 'STKaiti', serif; font-size: 1.25rem;" : "";
+        let sizeTuGoc = isMobile ? (isTrung ? "1.2rem" : "1rem") : (isTrung ? "1.5rem" : "1.1rem");
+        let sizeInput = isMobile ? "0.9rem" : "1.1rem";
+
+        let fontTuGoc = isTrung ? `font-family: 'KaiTi', 'STKaiti', serif; font-size: ${sizeTuGoc};` : `font-size: ${sizeTuGoc};`;
+        let fontInput = isTrung ? `font-family: 'KaiTi', 'STKaiti', serif; font-size: ${sizeInput};` : `font-size: ${sizeInput};`;
 
         tr.innerHTML = `
-            <td class="border border-gray-400 p-2 text-center ${c_tugoc}" id="tu-goc-${index}" style="${fontTuGoc}">${t_tugoc}</td>
-            <td class="border border-gray-400 p-2 text-center ${c_phienam}">${t_phienam}</td>
-            <td class="border border-gray-400 p-2 text-left ${c_nghia}">${t_nghia}</td>
-            <td class="border border-gray-400 p-0">
+            <td class="border border-gray-400 p-1 md:p-2 text-center ${c_tugoc}" id="tu-goc-${index}" style="${fontTuGoc}">${t_tugoc}</td>
+            <td class="border border-gray-400 p-1 md:p-2 text-center ${c_phienam}" style="font-size: ${isMobile ? '0.8rem' : '1rem'}">${t_phienam}</td>
+            <td class="border border-gray-400 p-1 md:p-2 text-left ${c_nghia}" style="font-size: ${isMobile ? '0.8rem' : '1rem'}">${t_nghia}</td>
+            <td class="border border-gray-400 p-0" style="width: ${isMobile ? '80px' : 'auto'}">
                 <input type="text" data-word="${item.tu_goc}" data-index="${index}" onkeypress="handleEnter(event, this)" 
-                       class="word-input w-full h-full p-2 text-center font-bold focus:outline-none focus:bg-blue-50" style="${fontInput}">
+                       class="word-input w-full h-full p-1 md:p-2 text-center font-bold focus:outline-none focus:bg-blue-50" 
+                       style="${fontInput}" placeholder="...">
             </td>
-            <td class="border border-gray-400 p-2 text-center font-bold" id="check-${index}"></td>
+            <td class="border border-gray-400 p-1 md:p-2 text-center font-bold text-xs md:text-base" id="check-${index}" style="min-width: ${isMobile ? '60px' : 'auto'}"></td>
         `;
         tbody.appendChild(tr);
     });
@@ -351,3 +360,4 @@ async function openLeaderboard(examId, examName) {
 function closeLeaderboard() {
     document.getElementById('leaderboard-modal').classList.add('hidden');
 }
+
