@@ -13,7 +13,7 @@ CORS(app)
 # ================= CẤU HÌNH SUPABASE =================
 # Dán URL và chuỗi khóa anon/public của ông vào đây nhé:
 SUPABASE_URL = "https://lqjemrfjvcwvsfotvefx.supabase.co"
-SUPABASE_KEY = "sb_publishable_l1OkHC3hXth8FNVap7-nag_nqTmWRz5"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxxamVtcmZqdmN3dnNmb3R2ZWZ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3MjQ5NzAsImV4cCI6MjA4ODMwMDk3MH0.piEM1tX0vJeB61snHFliGfwkwV8N-0BnRYl1tyMGLgA"
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 BUCKET_NAME = "excel_files" # Tên kho ông vừa tạo
@@ -242,3 +242,4 @@ if __name__ == '__main__':
     init_db()
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port, debug=True)
+
