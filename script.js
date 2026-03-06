@@ -125,7 +125,7 @@ async function confirmUpload(lang) {
     } catch (e) { alert("Lỗi up file!"); }
 }
 
-// --- DANH SÁCH BỘ ĐỀ & XẾP HẠNG ---
+// --- DANH SÁCH BỘ ĐỀ & XÓA ---
 async function showExamList(lang) {
     currentLang = lang;
     document.getElementById('list-title').textContent = "Danh sách bộ đề Tiếng " + lang;
@@ -137,22 +137,22 @@ async function showExamList(lang) {
         let data = await res.json();
         container.innerHTML = ""; 
         if (!data.data || data.data.length === 0) {
-            container.innerHTML = `<p class="italic">Chưa có bộ đề nào.</p>`;
+            container.innerHTML = `<p class="italic text-center text-gray-500">Chưa có bộ đề nào.</p>`;
         } else {
             data.data.forEach(exam => {
                 let div = document.createElement('div');
-                div.className = "bg-white p-4 rounded-lg shadow border-l-4 border-blue-500 flex justify-between items-center";
+                div.className = "bg-white p-4 rounded-lg shadow border-l-4 border-blue-500 flex justify-between items-center mb-3";
                 
                 let shareBadge = exam.is_shared ? `<span class="bg-green-100 text-green-800 text-xs px-2 rounded ml-2">Cộng đồng</span>` : '';
-                let deleteBtn = exam.is_mine ? `<button onclick="deleteExam(${exam.id})" class="bg-red-500 text-white py-1 px-3 rounded hover:bg-red-600 font-bold">Xóa</button>` : '';
+                let deleteBtn = exam.is_mine ? `<button onclick="deleteExam(${exam.id})" class="bg-red-500 text-white py-1 px-3 rounded hover:bg-red-600 font-bold transition">Xóa</button>` : '';
 
                 div.innerHTML = `
                     <div>
                         <h3 class="font-bold text-lg inline-block">${exam.name}</h3> ${shareBadge}
                     </div>
                     <div class="flex gap-2">
-                        <button onclick="startExam(${exam.id}, '${exam.name}')" class="bg-blue-500 text-white py-1 px-4 rounded font-bold hover:bg-blue-600">Làm Bài</button>
-                        <button onclick="openLeaderboard(${exam.id}, '${exam.name}')" class="bg-yellow-500 text-white py-1 px-3 rounded font-bold hover:bg-yellow-600">🏆 Hạng</button>
+                        <button onclick="startExam(${exam.id}, '${exam.name}')" class="bg-blue-500 text-white py-1 px-4 rounded font-bold hover:bg-blue-600 transition">Làm Bài</button>
+                        <button onclick="openLeaderboard(${exam.id}, '${exam.name}')" class="bg-yellow-500 text-white py-1 px-3 rounded font-bold hover:bg-yellow-600 transition">🏆 Hạng</button>
                         ${deleteBtn}
                     </div>
                 `;
@@ -233,7 +233,7 @@ function renderTable(data) {
 
 function handleEnter(event, input) {
     if (event.key === "Enter") {
-        let tuGoc = input.getAttribute('data-word').trim(); // Thêm trim() để bỏ dấu cách thừa
+        let tuGoc = input.getAttribute('data-word').trim(); 
         let tuNhap = input.value.trim();
         
         input.readOnly = true; 
@@ -248,13 +248,13 @@ function handleEnter(event, input) {
         tuGocCell.classList.remove('text-gray-400');
         tuGocCell.classList.add('text-black');
 
-        // SO SÁNH CHÍNH XÁC:
+        // SO SÁNH: Gắn data-correct vào element thay vì gán chữ
         if (tuNhap.toLowerCase() === tuGoc.toLowerCase()) {
-            checkCell.textContent = "TRUE"; // Phải có chữ TRUE để hàm submitExam đếm được điểm
+            checkCell.setAttribute('data-correct', 'true'); // Cột mốc chấm điểm
             checkCell.innerHTML = "✅ <span class='text-xs'>QUÁ GIỎI</span>"; 
             checkCell.className = "border border-gray-400 p-2 text-center font-bold text-green-600 bg-green-50";
         } else {
-            checkCell.textContent = "FALSE";
+            checkCell.setAttribute('data-correct', 'false'); // Cột mốc chấm điểm
             checkCell.innerHTML = "❌ <span class='text-xs'>SAI RỒI</span>";
             checkCell.className = "border border-gray-400 p-2 text-center font-bold text-red-600 bg-red-50";
         }
@@ -279,7 +279,9 @@ function submitExam() {
     inputs.forEach(input => {
         let index = input.getAttribute('data-index');
         let checkCell = document.getElementById(`check-${index}`);
-        if (checkCell && checkCell.textContent.includes("TRUE")) {
+        
+        // Đếm dựa trên cái nhãn data-correct tàng hình
+        if (checkCell && checkCell.getAttribute('data-correct') === 'true') {
             correctCount++;
         }
     });
