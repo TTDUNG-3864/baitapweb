@@ -8,27 +8,31 @@ let pendingUploadFile = null;
 let currentExamId = null; 
 let isSharedOption = false;
 
-// Trạng thái của 3 checkbox Ẩn/Hiện
 let hideTuGoc = false;
 let hidePhienAm = false;
 let hideNghia = false;
 
-// --- ĐIỀU HƯỚNG MÀN HÌNH (Đã Fix cho Mobile) ---
+// --- ĐIỀU HƯỚNG MÀN HÌNH (Đã Fix lỗi lệch bảng điểm) ---
 function showScreen(screenId) {
     let screens = ['login-screen', 'dashboard-screen', 'exam-list-screen', 'exam-screen', 'result-screen'];
     screens.forEach(id => {
         const el = document.getElementById(id);
         if(el) {
             el.classList.add('hidden');
-            el.style.display = 'none'; // Ép ẩn hoàn toàn để không lỗi cuộn trên điện thoại
+            el.style.display = ''; // Trả lại layout gốc của Tailwind
         }
     });
     
     const target = document.getElementById(screenId);
     if(target) {
         target.classList.remove('hidden');
-        target.style.display = screenId === 'login-screen' ? 'flex' : 'block';
-        window.scrollTo(0, 0); // Tự động cuộn lên đầu trang (Fix lỗi bấm không ăn)
+        // Trả lại flex để căn giữa hoàn hảo cho 2 màn hình này
+        if (screenId === 'login-screen' || screenId === 'result-screen') {
+            target.style.display = 'flex';
+        } else {
+            target.style.display = 'block';
+        }
+        window.scrollTo(0, 0); 
     }
 }
 
@@ -134,7 +138,7 @@ async function confirmUpload(lang) {
     } catch (e) { alert("Lỗi up file!"); }
 }
 
-// --- DANH SÁCH BỘ ĐỀ & XÓA (Đã Fix cho Mobile) ---
+// --- DANH SÁCH BỘ ĐỀ & XÓA ---
 async function showExamList(lang) {
     currentLang = lang;
     document.getElementById('list-title').textContent = "Bộ đề Tiếng " + lang;
@@ -151,12 +155,14 @@ async function showExamList(lang) {
         } else {
             data.data.forEach(exam => {
                 let div = document.createElement('div');
-                // Ép hiển thị dạng cột trên Mobile, tự dãn hàng
+                // Thay thế dấu nháy đơn để không bị lỗi nút
+                let safeName = exam.name.replace(/'/g, "\\'");
+                
                 div.className = "bg-white p-4 rounded-xl shadow-md border-l-8 border-blue-500 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-3";
                 
                 let shareBadge = exam.is_shared ? `<span class="bg-green-100 text-green-800 text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-tighter">Cộng đồng</span>` : '';
                 let deleteBtn = exam.is_mine ? `
-                    <button onclick="deleteExam(${exam.id})" class="bg-red-50 text-red-600 border border-red-200 py-2 px-4 rounded-lg font-bold text-sm active:bg-red-600 active:text-white transition-all">
+                    <button type="button" onclick="deleteExam(${exam.id})" class="bg-red-50 text-red-600 border border-red-200 py-2 px-4 rounded-lg font-bold text-sm active:bg-red-600 active:text-white transition-all">
                         🗑️ Xóa
                     </button>` : '';
 
@@ -169,10 +175,10 @@ async function showExamList(lang) {
                         <p class="text-xs text-gray-400 mt-1">${exam.is_mine ? 'Bộ đề của tôi' : 'Bộ đề chia sẻ'}</p>
                     </div>
                     <div class="flex flex-wrap gap-2 w-full md:w-auto justify-end">
-                        <button onclick="startExam(${exam.id}, '${exam.name}')" class="flex-1 md:flex-none bg-blue-600 text-white py-2 px-6 rounded-lg font-black shadow-md active:scale-95 transition-transform text-sm">
+                        <button type="button" onclick="startExam(${exam.id}, '${safeName}')" class="flex-1 md:flex-none bg-blue-600 text-white py-2 px-6 rounded-lg font-black shadow-md active:scale-95 transition-transform text-sm">
                             🎯 LÀM BÀI
                         </button>
-                        <button onclick="openLeaderboard(${exam.id}, '${exam.name}')" class="bg-yellow-100 text-yellow-700 border border-yellow-300 py-2 px-4 rounded-lg font-bold text-sm active:bg-yellow-500 active:text-white">
+                        <button type="button" onclick="openLeaderboard(${exam.id}, '${safeName}')" class="bg-yellow-100 text-yellow-700 border border-yellow-300 py-2 px-4 rounded-lg font-bold text-sm active:bg-yellow-500 active:text-white transition-all">
                             🏆 HẠNG
                         </button>
                         ${deleteBtn}
@@ -275,7 +281,6 @@ function handleEnter(event, input) {
         tuGocCell.classList.remove('text-gray-400');
         tuGocCell.classList.add('text-black');
 
-        // Gắn data-correct để chấm điểm, không phụ thuộc vào đoạn text hiển thị
         if (tuNhap.toLowerCase() === tuGoc.toLowerCase()) {
             checkCell.setAttribute('data-correct', 'true');
             checkCell.innerHTML = "✅ <br/><span class='text-[10px] md:text-xs'>QUÁ GIỎI</span>"; 
@@ -351,11 +356,17 @@ function retryExam() {
     showScreen('exam-screen');
 }
 
-// --- API BẢNG XẾP HẠNG (Bắt lỗi chuẩn) ---
+// --- API BẢNG XẾP HẠNG (Fix lỗi không hiển thị modal) ---
 async function openLeaderboard(examId, examName) {
-    document.getElementById('lb-exam-name').textContent = examName;
+    let modal = document.getElementById('leaderboard-modal');
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex'; // Ép hiển thị trên Mobile
+
+    // Bổ sung dòng check này để không bị chết code nếu lỡ tay xóa ID ở HTML
+    let titleEl = document.getElementById('lb-exam-name');
+    if(titleEl) titleEl.textContent = examName;
+
     document.getElementById('lb-body').innerHTML = `<tr><td colspan="3" class="text-center p-4">⏳ Đang lấy dữ liệu...</td></tr>`;
-    document.getElementById('leaderboard-modal').classList.remove('hidden');
 
     try {
         let res = await fetch(`${API_URL}/leaderboard/${examId}`);
@@ -388,5 +399,7 @@ async function openLeaderboard(examId, examName) {
 }
 
 function closeLeaderboard() {
-    document.getElementById('leaderboard-modal').classList.add('hidden');
+    let modal = document.getElementById('leaderboard-modal');
+    modal.classList.add('hidden');
+    modal.style.display = ''; // Dọn dẹp
 }
