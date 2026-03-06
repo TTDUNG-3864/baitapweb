@@ -2,8 +2,9 @@ const API_URL = "/api";
 
 let currentData = [];
 let currentLang = ""; 
-let userId = localStorage.getItem('vocab_user_id') || null; 
-let username = localStorage.getItem('vocab_username') || "";
+// Dùng sessionStorage để tắt trình duyệt là tự out nick
+let userId = sessionStorage.getItem('vocab_user_id') || null; 
+let username = sessionStorage.getItem('vocab_username') || "";
 let pendingUploadFile = null;
 let currentExamId = null; 
 let isSharedOption = false;
@@ -12,21 +13,20 @@ let hideTuGoc = false;
 let hidePhienAm = false;
 let hideNghia = false;
 
-// --- ĐIỀU HƯỚNG MÀN HÌNH (Đã Fix lỗi lệch bảng điểm) ---
+// --- ĐIỀU HƯỚNG MÀN HÌNH ---
 function showScreen(screenId) {
     let screens = ['login-screen', 'dashboard-screen', 'exam-list-screen', 'exam-screen', 'result-screen'];
     screens.forEach(id => {
         const el = document.getElementById(id);
         if(el) {
             el.classList.add('hidden');
-            el.style.display = ''; // Trả lại layout gốc của Tailwind
+            el.style.display = ''; 
         }
     });
     
     const target = document.getElementById(screenId);
     if(target) {
         target.classList.remove('hidden');
-        // Trả lại flex để căn giữa hoàn hảo cho 2 màn hình này
         if (screenId === 'login-screen' || screenId === 'result-screen') {
             target.style.display = 'flex';
         } else {
@@ -49,11 +49,7 @@ async function register() {
     let pass = document.getElementById('password').value.trim();
     if(!user || !pass) return alert("Nhập đủ thông tin!");
     try {
-        let res = await fetch(`${API_URL}/register`, { 
-            method: 'POST', 
-            headers: { 'Content-Type': 'application/json' }, 
-            body: JSON.stringify({ username: user, password: pass }) 
-        });
+        let res = await fetch(`${API_URL}/register`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: user, password: pass }) });
         let data = await res.json();
         alert(data.message);
     } catch (e) { alert("Lỗi mạng!"); }
@@ -64,25 +60,24 @@ async function login() {
     let pass = document.getElementById('password').value.trim();
     if(!user || !pass) return alert("Nhập đủ thông tin!");
     try {
-        let res = await fetch(`${API_URL}/login`, { 
-            method: 'POST', 
-            headers: { 'Content-Type': 'application/json' }, 
-            body: JSON.stringify({ username: user, password: pass }) 
-        });
+        let res = await fetch(`${API_URL}/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: user, password: pass }) });
         let data = await res.json();
         if (data.status === "success") {
             userId = data.user_id; username = user;
-            localStorage.setItem('vocab_user_id', userId);
-            localStorage.setItem('vocab_username', username);
+            sessionStorage.setItem('vocab_user_id', userId);
+            sessionStorage.setItem('vocab_username', username);
             document.getElementById('display-name').textContent = username;
             showScreen('dashboard-screen');
+            updateActivityTime(); // Bắt đầu tính giờ
         } else { alert("Lỗi: " + data.message); }
-    } catch (e) { alert("Lỗi Server!"); }
+    } catch (e) { alert("Lỗi Server! Nhớ bật app.py lên nhé."); }
 }
 
 function logout() {
     userId = null; username = "";
-    localStorage.clear();
+    sessionStorage.clear();
+    document.getElementById('username').value = "";
+    document.getElementById('password').value = "";
     showScreen('login-screen');
 }
 
@@ -138,7 +133,7 @@ async function confirmUpload(lang) {
     } catch (e) { alert("Lỗi up file!"); }
 }
 
-// --- DANH SÁCH BỘ ĐỀ & XÓA ---
+// --- DANH SÁCH BỘ ĐỀ ---
 async function showExamList(lang) {
     currentLang = lang;
     document.getElementById('list-title').textContent = "Bộ đề Tiếng " + lang;
@@ -155,7 +150,6 @@ async function showExamList(lang) {
         } else {
             data.data.forEach(exam => {
                 let div = document.createElement('div');
-                // Thay thế dấu nháy đơn để không bị lỗi nút
                 let safeName = exam.name.replace(/'/g, "\\'");
                 
                 div.className = "bg-white p-4 rounded-xl shadow-md border-l-8 border-blue-500 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-3";
@@ -297,7 +291,6 @@ function handleEnter(event, input) {
     }
 }
 
-// --- NỘP BÀI & KẾT QUẢ ---
 function submitExam() {
     let inputs = document.querySelectorAll('.word-input');
     let correctCount = 0;
@@ -356,13 +349,12 @@ function retryExam() {
     showScreen('exam-screen');
 }
 
-// --- API BẢNG XẾP HẠNG (Fix lỗi không hiển thị modal) ---
+// --- API BẢNG XẾP HẠNG ---
 async function openLeaderboard(examId, examName) {
     let modal = document.getElementById('leaderboard-modal');
     modal.classList.remove('hidden');
-    modal.style.display = 'flex'; // Ép hiển thị trên Mobile
+    modal.style.display = 'flex'; 
 
-    // Bổ sung dòng check này để không bị chết code nếu lỡ tay xóa ID ở HTML
     let titleEl = document.getElementById('lb-exam-name');
     if(titleEl) titleEl.textContent = examName;
 
@@ -401,5 +393,30 @@ async function openLeaderboard(examId, examName) {
 function closeLeaderboard() {
     let modal = document.getElementById('leaderboard-modal');
     modal.classList.add('hidden');
-    modal.style.display = ''; // Dọn dẹp
+    modal.style.display = ''; 
 }
+
+// --- TÍNH NĂNG BẢO MẬT: TỰ ĐỘNG ĐĂNG XUẤT SAU 30 PHÚT ---
+const IDLE_TIMEOUT = 30 * 60 * 1000; 
+
+function updateActivityTime() {
+    if (userId) {
+        sessionStorage.setItem('last_active_time', Date.now());
+    }
+}
+
+document.addEventListener('click', updateActivityTime);
+document.addEventListener('keypress', updateActivityTime);
+
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && userId) {
+        let lastActive = sessionStorage.getItem('last_active_time');
+        
+        if (lastActive && (Date.now() - parseInt(lastActive) > IDLE_TIMEOUT)) {
+            alert("⏰ Phiên học đã hết hạn do để web quá lâu. Vui lòng đăng nhập lại!");
+            logout();
+        } else {
+            updateActivityTime();
+        }
+    }
+});
