@@ -13,6 +13,7 @@ let hideTuGoc = false;
 let hidePhienAm = false;
 let hideNghia = false;
 
+// --- ĐIỀU HƯỚNG MÀN HÌNH ---
 function showScreen(screenId) {
     let screens = ['login-screen', 'dashboard-screen', 'exam-list-screen', 'exam-screen', 'result-screen'];
     screens.forEach(id => {
@@ -29,12 +30,17 @@ window.onload = function() {
     }
 };
 
+// --- ĐĂNG KÝ & ĐĂNG NHẬP ---
 async function register() {
     let user = document.getElementById('username').value.trim();
     let pass = document.getElementById('password').value.trim();
     if(!user || !pass) return alert("Nhập đủ thông tin!");
     try {
-        let res = await fetch(`${API_URL}/register`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: user, password: pass }) });
+        let res = await fetch(`${API_URL}/register`, { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify({ username: user, password: pass }) 
+        });
         let data = await res.json();
         alert(data.message);
     } catch (e) { alert("Lỗi mạng!"); }
@@ -45,7 +51,11 @@ async function login() {
     let pass = document.getElementById('password').value.trim();
     if(!user || !pass) return alert("Nhập đủ thông tin!");
     try {
-        let res = await fetch(`${API_URL}/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: user, password: pass }) });
+        let res = await fetch(`${API_URL}/login`, { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify({ username: user, password: pass }) 
+        });
         let data = await res.json();
         if (data.status === "success") {
             userId = data.user_id; username = user;
@@ -65,6 +75,7 @@ function logout() {
 
 function goHome() { showScreen('dashboard-screen'); }
 
+// --- UPLOAD FILE ---
 function selectShareOption(isShared) {
     isSharedOption = isShared;
     let btnShare = document.getElementById('btn-share');
@@ -114,6 +125,7 @@ async function confirmUpload(lang) {
     } catch (e) { alert("Lỗi up file!"); }
 }
 
+// --- DANH SÁCH BỘ ĐỀ & XẾP HẠNG ---
 async function showExamList(lang) {
     currentLang = lang;
     document.getElementById('list-title').textContent = "Danh sách bộ đề Tiếng " + lang;
@@ -148,23 +160,24 @@ async function showExamList(lang) {
             });
         }
         showScreen('exam-list-screen');
-    } catch (e) { alert("Lỗi!"); }
+    } catch (e) { alert("Lỗi lấy danh sách!"); }
 }
 
 async function deleteExam(examId) {
-    if(!confirm("Xóa nhé?")) return;
+    if(!confirm("Xóa bộ đề này nhé?")) return;
     try {
         let res = await fetch(`${API_URL}/exam/${examId}`, { method: 'DELETE' });
         let data = await res.json();
         if (data.status === "success") showExamList(currentLang);
-    } catch (e) {}
+    } catch (e) { alert("Lỗi khi xóa!"); }
 }
 
+// --- LOGIC LÀM BÀI ---
 async function startExam(examId, examName) {
     currentExamId = examId;
     document.getElementById('exam-title').textContent = examName;
     
-    // Reset lại trạng thái tick
+    // Reset checkbox ẩn hiện
     document.getElementById('toggle-tugoc').checked = false;
     document.getElementById('toggle-phienam').checked = false;
     document.getElementById('toggle-nghia').checked = false;
@@ -179,7 +192,6 @@ async function startExam(examId, examName) {
     } catch (e) { alert("Lỗi tải đề!"); }
 }
 
-// Hàm BẬT/TẮT Cột
 function toggleColumns() {
     hideTuGoc = document.getElementById('toggle-tugoc').checked;
     hidePhienAm = document.getElementById('toggle-phienam').checked;
@@ -197,12 +209,10 @@ function renderTable(data) {
         let t_phienam = hidePhienAm ? "***" : (item.phien_am || '');
         let t_nghia = hideNghia ? "***" : item.nghia;
         
-        // Cấp màu ĐỘC LẬP cho từng cột
         let c_tugoc = hideTuGoc ? "text-gray-400 font-normal" : "text-black font-bold";
         let c_phienam = hidePhienAm ? "text-gray-400" : "text-black";
         let c_nghia = hideNghia ? "text-gray-400" : "text-black";
 
-        // TỰ ĐỘNG NHẬN DIỆN TIẾNG TRUNG: Ép font Kaiti và tăng size chữ cho dễ nhìn nét
         let isTrung = (currentLang === 'Trung');
         let fontTuGoc = isTrung ? "font-family: 'KaiTi', 'STKaiti', serif; font-size: 1.5rem;" : "";
         let fontInput = isTrung ? "font-family: 'KaiTi', 'STKaiti', serif; font-size: 1.25rem;" : "";
@@ -227,21 +237,23 @@ function handleEnter(event, input) {
         let index = input.getAttribute('data-index');
         let tuNhap = input.value.trim();
         
-        input.readOnly = true; input.classList.add('bg-gray-100');
+        input.readOnly = true; 
+        input.classList.add('bg-gray-100');
 
         let checkCell = document.getElementById(`check-${index}`);
         let tuGocCell = document.getElementById(`tu-goc-${index}`);
         
-        // Hiện lại từ gốc luôn
         tuGocCell.textContent = tuGoc;
         tuGocCell.classList.remove('text-gray-400');
         tuGocCell.classList.add('text-black');
 
         if (tuNhap.toLowerCase() === tuGoc.toLowerCase()) {
-            checkCell.textContent = "QUÁ GIỎI";
+            checkCell.textContent = "TRUE"; // Để logic chấm điểm đếm được
+            checkCell.innerHTML = "✅ <span class='text-xs'>QUÁ GIỎI</span>"; 
             checkCell.className = "border border-gray-400 p-2 text-center font-bold text-green-600 bg-green-50";
         } else {
-            checkCell.textContent = "SAI RỒI";
+            checkCell.textContent = "FALSE";
+            checkCell.innerHTML = "❌ <span class='text-xs'>SAI RỒI</span>";
             checkCell.className = "border border-gray-400 p-2 text-center font-bold text-red-600 bg-red-50";
         }
         
@@ -251,46 +263,42 @@ function handleEnter(event, input) {
     }
 }
 
+// --- NỘP BÀI & KẾT QUẢ ---
 function submitExam() {
     let inputs = document.querySelectorAll('.word-input');
     let correctCount = 0;
     
     inputs.forEach(input => {
-        if (!input.readOnly && input.value.trim() !== "") handleEnter({ key: "Enter" }, input);
-        else if (!input.readOnly && input.value.trim() === "") {
-             let index = input.getAttribute('data-index');
-             let checkCell = document.getElementById(`check-${index}`);
-             checkCell.textContent = "FALSE";
-             checkCell.className = "border border-gray-400 p-2 text-center font-bold text-red-600 bg-red-100";
-             
-             let tuGocCell = document.getElementById(`tu-goc-${index}`);
-             tuGocCell.textContent = input.getAttribute('data-word');
-             tuGocCell.classList.remove('text-gray-400'); tuGocCell.classList.add('text-black');
-             
-             input.readOnly = true; input.classList.add('bg-gray-100');
+        if (!input.readOnly) {
+            handleEnter({ key: "Enter" }, input);
         }
     });
 
     inputs.forEach(input => {
-        let checkCell = document.getElementById(`check-${input.getAttribute('data-index')}`);
-        if (checkCell && checkCell.textContent === "TRUE") correctCount++;
+        let index = input.getAttribute('data-index');
+        let checkCell = document.getElementById(`check-${index}`);
+        if (checkCell && checkCell.textContent.includes("TRUE")) {
+            correctCount++;
+        }
     });
 
-    let ptram = Math.round((correctCount / inputs.length) * 100);
+    let total = inputs.length;
+    let ptram = total > 0 ? Math.round((correctCount / total) * 100) : 0;
     document.getElementById('score-display').textContent = ptram;
 
-    // Lưu điểm
+    // Lưu điểm qua API Supabase
     fetch(`${API_URL}/save_result`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: userId, exam_id: currentExamId, score: ptram })
-    });
+    }).catch(err => console.error("Lỗi lưu điểm:", err));
 
     let msg = document.getElementById('result-message');
     if (ptram === 100) {
         msg.innerHTML = "🎉 Tuyệt hảo! Đúng 100% không trượt phát nào!";
-        msg.className = "text-lg font-bold mb-8 text-green-600";
+        msg.className = "text-xl font-bold mb-8 text-green-600";
     } else {
-        msg.innerHTML = `Bạn làm đúng ${ptram}%. Cố lên nhé!`;
+        msg.innerHTML = `Bạn làm đúng ${ptram}%. Cố lên nhé! 💪`;
         msg.className = "text-lg font-bold mb-8 text-red-600";
     }
 
@@ -298,7 +306,6 @@ function submitExam() {
 }
 
 function retryExam() {
-    // Trộn lại mảng hiện tại để học
     currentData = [...currentData].sort(() => Math.random() - 0.5);
     renderTable(currentData);
     showScreen('exam-screen');
@@ -316,7 +323,7 @@ async function openLeaderboard(examId, examName) {
         let tbody = document.getElementById('lb-body');
         tbody.innerHTML = "";
 
-        if(data.data.length === 0) {
+        if(!data.data || data.data.length === 0) {
             tbody.innerHTML = `<tr><td colspan="3" class="text-center p-4 text-gray-500">Chưa có ai thi bộ này!</td></tr>`;
             return;
         }
@@ -326,7 +333,7 @@ async function openLeaderboard(examId, examName) {
             let tr = document.createElement('tr');
             tr.className = "border-b hover:bg-yellow-50";
             tr.innerHTML = `
-                <td class="p-2 font-bold text-xl">${rankIcon}</td>
+                <td class="p-2 font-bold text-xl text-center">${rankIcon}</td>
                 <td class="p-2 font-bold ${row.username === username ? 'text-blue-600' : ''}">${row.username} ${row.username === username ? '(Bạn)' : ''}</td>
                 <td class="p-2 text-right font-black text-green-600">${row.score}%</td>
             `;
