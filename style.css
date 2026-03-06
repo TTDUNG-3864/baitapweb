@@ -1,15 +1,238 @@
-/* Khóa ô input không cho click hay gõ phím nữa sau khi đã ấn Enter */
-.input-locked { 
-    pointer-events: none; 
+/* =========================================================
+   BẢN CSS HOÀN HẢO - FIX TRIỆT ĐỂ MÀU SẮC VÀ GIAO DIỆN
+========================================================= */
+
+/* --- 1. KHUNG HEADER & ĐĂNG XUẤT (Chống che chữ) --- */
+#dashboard-screen .flex.justify-between,
+#exam-list-screen .flex.justify-between,
+#exam-screen .flex.justify-between {
+    background: rgba(255, 255, 255, 0.95) !important;
+    backdrop-filter: blur(8px) !important;
+    border-radius: 12px !important;
+    padding: 15px 20px !important;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.15) !important;
+    flex-wrap: wrap !important; /* Tự động xuống dòng nếu chật */
+    gap: 15px !important;
+    align-items: center !important;
 }
 
-/* Các class dùng để báo đúng/sai (TRUE/FALSE) ở cột Check */
+/* --- 2. HIỆU ỨNG CHỮ 7 MÀU (Tươi sáng, không bị đen) --- */
+/* --- 2. HIỆU ỨNG CHỮ 7 MÀU (Bản gốc siêu mượt) --- */
+.text-rainbow {
+    background: linear-gradient(to right, #ff0000, #ff7f00, #eab308, #22c55e, #3b82f6, #4f46e5, #a855f7) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    background-size: 200% auto !important;
+    animation: rainbow-shine 10s linear infinite !important;
+    
+    /* 2 dòng cực kỳ quan trọng để không bị lỗi xỉn màu: */
+    text-shadow: none !important; /* Ép xóa cái bóng trắng làm mờ chữ */
+    filter: drop-shadow(0px 5px 8px rgba(0,0,0,0.6)) !important; /* Đổ một lớp bóng đen mờ phía sau lưng để tách chữ ra khỏi nền lúa */
+}
+
+@keyframes rainbow-shine {
+    to { background-position: 200% center; }
+}
+/* --- 3. HỆ THỐNG NÚT BẤM 3D (Ép Đè Toàn Bộ Tailwind) --- */
+button {
+    position: relative !important;
+    border: none !important;
+    padding: 0.7em 1.2em !important;
+    font-weight: 900 !important;
+    text-transform: uppercase !important;
+    transition: all 0.1s ease !important;
+    border-radius: 8px !important;
+    cursor: pointer !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    color: #fff !important;
+    box-shadow: 0px 5px 0px rgba(0,0,0,0.2), 0px 8px 10px rgba(0,0,0,0.15) !important;
+}
+
+button:active {
+    top: 4px !important;
+    box-shadow: 0px 1px 0px rgba(0,0,0,0.2), 0px 2px 3px rgba(0,0,0,0.15) !important;
+}
+
+button:focus { outline: none !important; }
+
+/* --- 4. PHÂN MÀU RIÊNG CHO TỪNG NÚT (Sáng và Rực rỡ) --- */
+
+/* Nút Xóa & Đăng Xuất (Đỏ tươi cực mạnh) */
+button.bg-red-50, button.bg-red-500, button.bg-red-600, button.text-red-500, button.text-red-600, button[onclick*="deleteExam"], button[onclick*="logout"] {
+    background-color: #ef4444 !important; /* Đỏ tươi rực rỡ */
+    color: #ffffff !important;
+    border-bottom: 5px solid #b91c1c !important; /* Đáy đỏ đô */
+}
+
+/* Nút Hạng (Cam sáng, tách biệt khỏi màu xanh lá) */
+button.bg-yellow-100, button.bg-yellow-500, button.text-yellow-700, button[onclick*="openLeaderboard"] {
+    background-color: #f97316 !important; /* Cam sáng chói */
+    color: #ffffff !important;
+    border-bottom: 5px solid #c2410c !important; /* Đáy cam đậm */
+}
+
+/* Nút Làm Bài & Đăng Nhập (Xanh dương) */
+button.bg-blue-500, button.bg-blue-600, button.bg-blue-700 {
+    background-color: #3b82f6 !important;
+    color: #ffffff !important;
+    border-bottom: 5px solid #1d4ed8 !important;
+}
+
+/* Nút Thêm File / Nộp Bài (Xanh lá) */
+button.bg-green-500, button.bg-green-600 {
+    background-color: #22c55e !important;
+    color: #ffffff !important;
+    border-bottom: 5px solid #15803d !important;
+}
+
+/* Nút Thoát / Quay Lại (Xám đậm) */
+button.bg-gray-200, button.bg-gray-500, button.bg-gray-800 {
+    background-color: #6b7280 !important;
+    color: #ffffff !important;
+    border-bottom: 5px solid #374151 !important;
+}
+
+/* --- 5. BẢNG ĐIỀN TỪ & TRẠNG THÁI --- */
+.input-locked { 
+    pointer-events: none !important; 
+    background-color: #e5e7eb !important; 
+    color: #6b7280 !important;
+}
+
 .check-true {
-    background-color: #22c55e !important; /* Xanh lá cây */
-    color: white;
+    background-color: #22c55e !important; 
+    color: white !important;
+    font-weight: bold !important;
+    border-bottom: 4px solid #15803d !important; /* 3D cho ô đúng */
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3) !important;
 }
 
 .check-false {
-    background-color: #dc2626 !important; /* Đỏ */
-    color: white;
+    background-color: #ef4444 !important; 
+    color: white !important;
+    font-weight: bold !important;
+    border-bottom: 4px solid #b91c1c !important; /* 3D cho ô sai */
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3) !important;
+}
+/* --- 7. FIX NÚT "HỦY" BỊ TÀNG HÌNH TRONG BẢNG UPLOAD --- */
+button[onclick="closeUploadModal()"] {
+    background-color: #6b7280 !important; /* Màu xám đậm */
+    color: #ffffff !important; /* Chữ trắng */
+    border-bottom: 5px solid #374151 !important; /* Đáy 3D xám đen */
+    box-shadow: 0px 5px 0px rgba(0,0,0,0.2), 0px 8px 10px rgba(0,0,0,0.15) !important;
+    margin-top: 15px !important;
+    width: 100% !important; /* Cho nút dãn dài ra hết bảng cho đẹp */
+}
+
+button[onclick="closeUploadModal()"]:active {
+    top: 4px !important;
+    box-shadow: 0px 1px 0px rgba(0,0,0,0.2), 0px 2px 3px rgba(0,0,0,0.15) !important;
+}
+/* --- 8. FORM ĐĂNG NHẬP 3D NEO-BRUTALISM --- */
+.input__container {
+  position: relative;
+  background: #f0f0f0;
+  padding: 10px;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 15px;
+  border: 4px solid #000;
+  width: 100%; /* Dãn hết chiều ngang bảng */
+  transition: all 400ms cubic-bezier(0.23, 1, 0.32, 1);
+  transform-style: preserve-3d;
+  transform: rotateX(10deg) rotateY(-10deg);
+  perspective: 1000px;
+  box-shadow: 10px 10px 0 #000;
+}
+
+.input__container:hover {
+  transform: rotateX(5deg) rotateY(1deg) scale(1.05);
+  box-shadow: 15px 15px 0 -5px #e9b50b, 15px 15px 0 0 #000;
+}
+
+.shadow__input {
+  content: "";
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  left: 0;
+  bottom: 0;
+  z-index: -1;
+  transform: translateZ(-50px);
+  background: linear-gradient(45deg, rgba(255, 107, 107, 0.4) 0%, rgba(255, 107, 107, 0.1) 100%);
+  filter: blur(20px);
+}
+
+.input__button__shadow {
+  cursor: pointer;
+  border: 3px solid #000;
+  background: #e9b50b;
+  transition: all 400ms cubic-bezier(0.23, 1, 0.32, 1);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 10px;
+  transform: translateZ(20px);
+  position: relative;
+  z-index: 3;
+}
+
+.input__button__shadow:hover {
+  background: #e9b50b;
+  transform: translateZ(10px) translateX(-5px) translateY(-5px);
+  box-shadow: 5px 5px 0 0 #000;
+}
+
+.input__button__shadow svg {
+  fill: #000;
+  width: 25px;
+  height: 25px;
+}
+
+.input__search {
+  width: 100%;
+  outline: none;
+  border: 3px solid #000;
+  padding: 10px 15px;
+  font-size: 16px;
+  background: #fff;
+  color: #000;
+  transform: translateZ(10px);
+  transition: all 400ms cubic-bezier(0.23, 1, 0.32, 1);
+  position: relative;
+  z-index: 3;
+  font-family: inherit;
+  font-weight: 900;
+}
+
+.input__search::placeholder {
+  color: #888;
+  font-weight: bold;
+}
+
+.input__search:hover,
+.input__search:focus {
+  background: #f0f0f0;
+  transform: translateZ(20px) translateX(-5px) translateY(-5px);
+  box-shadow: 5px 5px 0 0 #000;
+}
+
+/* Biến đổi tên nhãn linh hoạt nhờ data-label */
+.input__container::before {
+  content: attr(data-label); 
+  position: absolute;
+  top: -15px;
+  left: 20px;
+  background: #e9b50b;
+  color: #000;
+  font-weight: 900;
+  padding: 5px 10px;
+  font-size: 14px;
+  transform: translateZ(50px);
+  z-index: 4;
+  border: 2px solid #000;
+  box-shadow: 2px 2px 0 #000;
 }
