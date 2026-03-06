@@ -10,37 +10,36 @@
         .check-true { color: #16a34a; background-color: #dcfce3; }
         .check-false { color: #dc2626; background-color: #fee2e2; }
         body {
-        /* Nếu dùng ảnh trong máy: */
-        background-image: url('1.jpg'); 
-        
-        /* Nếu dùng ảnh trên mạng thì thay bằng: 
-        background-image: url('https://link-anh-cua-ong.com/anh.jpg'); */
-        
-        background-size: cover; /* Phóng to ảnh vừa khít toàn màn hình */
-        background-position: center; /* Canh giữa ảnh */
-        background-attachment: fixed; /* Cuộn trang web nhưng ảnh nền đứng im (rất ngầu) */
-        background-repeat: no-repeat;
-    }
-    /* Hiệu ứng chữ 7 màu cầu vồng chuyển động */
-    .text-rainbow {
-        background: linear-gradient(to right, #ff0000, #ff7f00, #eab308, #22c55e, #3b82f6, #4f46e5, #a855f7);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-size: 200% auto;
-        animation: rainbow-shine 10s linear infinite;
-    }
-    
-    @keyframes rainbow-shine {
-        to {
-            background-position: 200% center;
+            background-image: url('1.jpg'); 
+            background-size: cover; 
+            background-position: center; 
+            background-attachment: fixed; 
+            background-repeat: no-repeat;
         }
-    }
+        /* Hiệu ứng chữ 7 màu cầu vồng chuyển động */
+        .text-rainbow {
+            background: linear-gradient(to right, #ff0000, #ff7f00, #eab308, #22c55e, #3b82f6, #4f46e5, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-size: 200% auto;
+            animation: rainbow-shine 10s linear infinite;
+        }
+        
+        @keyframes rainbow-shine {
+            to { background-position: 200% center; }
+        }
+
+        /* Tối ưu cho bảng trên mobile */
+        .table-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(5px);
+        }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800 min-h-screen" style="font-family: 'Times New Roman', Times, serif;">
 
     <div id="login-screen" class="screen flex items-center justify-center min-h-screen">
-        <div class="bg-white p-8 rounded-lg shadow-md w-96">
+        <div class="bg-white p-8 rounded-lg shadow-md w-96 mx-4">
             <h2 class="text-2xl font-bold mb-6 text-center text-blue-600">Hệ Thống Ôn Tập</h2>
             <div class="mb-4">
                 <label class="block text-gray-700 text-sm font-bold mb-2">Tên tài khoản</label>
@@ -51,26 +50,21 @@
                 <input id="password" type="password" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Nhập mật khẩu...">
             </div>
             <div class="flex items-center justify-between gap-2">
-                <button onclick="login()" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-1/2">
-                    Đăng Nhập
-                </button>
-                <button onclick="register()" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-1/2">
-                    Đăng Ký
-                </button>
+                <button onclick="login()" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-1/2">Đăng Nhập</button>
+                <button onclick="register()" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-1/2">Đăng Ký</button>
             </div>
         </div>
     </div>
 
     <div id="dashboard-screen" class="screen hidden container mx-auto p-4 max-w-4xl mt-10">
-        <div class="flex justify-between items-center bg-white p-4 rounded shadow mb-6">
-            <div>
-                <span class="font-bold text-lg">Chào bạn, <span id="display-name" class="text-blue-600"></span>!</span>
-            </div>
+        <div class="flex justify-between items-center bg-white p-4 rounded shadow mb-6 mx-2">
+            <div><span class="font-bold text-lg">Chào bạn, <span id="display-name" class="text-blue-600"></span>!</span></div>
             <button onclick="logout()" class="text-red-500 font-bold hover:underline">Đăng Xuất</button>
         </div>
 
-       <h1 class="text-4xl font-black text-center mb-8 text-rainbow drop-shadow-xl uppercase tracking-wider">Bạn muốn học tiếng gì hôm nay?</h1>
-        <div class="grid grid-cols-2 gap-6">
+       <h1 class="text-2xl md:text-4xl font-black text-center mb-8 text-rainbow drop-shadow-xl uppercase tracking-wider px-2">Bạn muốn học tiếng gì hôm nay?</h1>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 px-2">
             <div class="bg-white p-6 rounded-lg shadow text-center cursor-pointer hover:shadow-lg transition border-t-4 border-blue-500" onclick="showExamList('Anh')">
                 <h2 class="text-2xl font-bold mb-4">🇺🇸 Tiếng Anh</h2>
                 <button class="bg-blue-500 text-white px-4 py-2 rounded font-bold">Xem Danh Sách</button>
@@ -89,118 +83,105 @@
         </div>
     </div>
 
-    <div id="upload-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white p-6 rounded-lg shadow-xl w-96">
+    <div id="upload-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
             <h3 class="text-xl font-bold mb-4">Cài đặt file tải lên</h3>
-            
             <label class="block text-sm font-bold mb-2">Tên bộ đề:</label>
-            <input type="text" id="upload-exam-name" class="border w-full p-2 rounded mb-4 focus:ring-2 focus:ring-green-500">
-            
+            <input type="text" id="upload-exam-name" class="border w-full p-2 rounded mb-4">
             <label class="block text-sm font-bold mb-2">Quyền riêng tư:</label>
             <div class="flex gap-2 mb-6">
-                <button id="btn-share" onclick="selectShareOption(true)" class="flex-1 py-2 px-2 border rounded font-semibold text-sm transition bg-gray-200 text-gray-700 border-gray-300">
-                    🌍 Chia sẻ
-                </button>
-                <button id="btn-private" onclick="selectShareOption(false)" class="flex-1 py-2 px-2 border rounded font-semibold text-sm transition bg-green-500 text-white border-green-600">
-                    🔒 Cá nhân
-                </button>
+                <button id="btn-share" onclick="selectShareOption(true)" class="flex-1 py-2 px-2 border rounded font-semibold text-xs md:text-sm bg-gray-200">🌍 Chia sẻ</button>
+                <button id="btn-private" onclick="selectShareOption(false)" class="flex-1 py-2 px-2 border rounded font-semibold text-xs md:text-sm bg-green-500 text-white">🔒 Cá nhân</button>
             </div>
-
             <div class="flex gap-2">
-                <button type="button" onclick="confirmUpload('Anh')" class="flex-1 bg-blue-500 text-white py-2 rounded font-bold hover:bg-blue-600">Lưu Tiếng Anh</button>
-                <button type="button" onclick="confirmUpload('Trung')" class="flex-1 bg-red-500 text-white py-2 rounded font-bold hover:bg-red-600">Lưu Tiếng Trung</button>
+                <button onclick="confirmUpload('Anh')" class="flex-1 bg-blue-500 text-white py-2 rounded font-bold">Lưu Anh</button>
+                <button onclick="confirmUpload('Trung')" class="flex-1 bg-red-500 text-white py-2 rounded font-bold">Lưu Trung</button>
             </div>
-            <button onclick="closeUploadModal()" class="mt-4 w-full text-gray-500 hover:text-gray-800 font-bold">Hủy</button>
+            <button onclick="closeUploadModal()" class="mt-4 w-full text-gray-500 font-bold text-center">Hủy</button>
         </div>
     </div>
 
     <div id="exam-list-screen" class="screen hidden container mx-auto p-4 max-w-4xl mt-10">
-        <div class="flex justify-between items-center mb-6">
-            <h2 id="list-title" class="text-2xl font-bold">Danh sách bộ đề</h2>
-            <button onclick="goHome()" class="bg-gray-500 text-white px-4 py-2 rounded font-bold hover:bg-gray-600">← Quay Lại</button>
+        <div class="flex justify-between items-center mb-6 px-2">
+            <h2 id="list-title" class="text-xl md:text-2xl font-bold">Danh sách bộ đề</h2>
+            <button onclick="goHome()" class="bg-gray-500 text-white px-3 py-1 md:px-4 md:py-2 rounded font-bold hover:bg-gray-600 text-sm">← Quay Lại</button>
         </div>
-        <div id="exam-list-container" class="flex flex-col gap-4"></div>
+        <div id="exam-list-container" class="flex flex-col gap-4 px-2"></div>
     </div>
 
-    <div id="exam-screen" class="screen hidden container mx-auto p-4 max-w-6xl mt-6">
-        <div class="flex justify-between items-center mb-4 bg-white p-4 shadow rounded border-l-4 border-blue-500">
-            <div>
-                <h2 id="exam-title" class="text-xl font-bold text-blue-700 uppercase">Tên Bộ Đề</h2>
-            </div>
+    <div id="exam-screen" class="screen hidden container mx-auto p-2 md:p-4 max-w-6xl mt-4">
+        <div class="flex flex-col md:flex-row justify-between items-center mb-4 bg-white p-4 shadow rounded border-l-4 border-blue-500 gap-3">
+            <h2 id="exam-title" class="text-lg md:text-xl font-bold text-blue-700 uppercase text-center md:text-left">Tên Bộ Đề</h2>
             <div class="flex gap-2">
-                <button onclick="showExamList(currentLang)" class="bg-gray-500 text-white px-4 py-2 rounded font-bold hover:bg-gray-600">Thoát</button>
-                <button onclick="submitExam()" class="bg-green-600 text-white px-4 py-2 rounded font-bold hover:bg-green-700">Nộp Bài</button>
+                <button onclick="showExamList(currentLang)" class="bg-gray-500 text-white px-4 py-2 rounded font-bold text-sm">Thoát</button>
+                <button onclick="submitExam()" class="bg-green-600 text-white px-4 py-2 rounded font-bold text-sm">Nộp Bài</button>
             </div>
         </div>
 
-        <div class="bg-white shadow rounded overflow-hidden">
-            <table class="w-full border-collapse">
-                <thead>
-                    <tr class="bg-gray-800 text-white">
-                        <th class="border border-gray-600 p-2 w-1/5 text-center">
-                            <div class="font-bold mb-1">TỪ GỐC</div>
-                            <label class="text-xs bg-gray-700 px-2 py-1 rounded cursor-pointer hover:bg-gray-600 inline-flex items-center">
-                                <input type="checkbox" id="toggle-tugoc" onchange="toggleColumns()" class="mr-1"> Ẩn từ
-                            </label>
-                        </th>
-                        <th class="border border-gray-600 p-2 w-1/6 text-center">
-                            <div class="font-bold mb-1">PHIÊN ÂM</div>
-                            <label class="text-xs bg-gray-700 px-2 py-1 rounded cursor-pointer hover:bg-gray-600 inline-flex items-center">
-                                <input type="checkbox" id="toggle-phienam" onchange="toggleColumns()" class="mr-1"> Ẩn
-                            </label>
-                        </th>
-                        <th class="border border-gray-600 p-2 w-1/3 text-center">
-                            <div class="font-bold mb-1">NGHĨA</div>
-                            <label class="text-xs bg-gray-700 px-2 py-1 rounded cursor-pointer hover:bg-gray-600 inline-flex items-center">
-                                <input type="checkbox" id="toggle-nghia" onchange="toggleColumns()" class="mr-1"> Ẩn nghĩa
-                            </label>
-                        </th>
-                        <th id="col-lang" class="border border-gray-600 p-2 w-1/5 bg-blue-600 align-middle">ĐIỀN TỪ</th>
-                        <th class="border border-gray-600 p-2 w-24 align-middle">CHECK</th>
-                    </tr>
-                </thead>
-                <tbody id="exam-body"></tbody>
-            </table>
+        <div class="table-container shadow-lg rounded-lg overflow-hidden border border-gray-300">
+            <div class="overflow-x-auto">
+                <table class="w-full border-collapse min-w-[700px]">
+                    <thead>
+                        <tr class="bg-gray-800 text-white text-sm">
+                            <th class="border border-gray-600 p-2 w-[150px]">
+                                <div class="font-bold mb-1">TỪ GỐC</div>
+                                <label class="text-[10px] bg-gray-700 px-1 py-0.5 rounded cursor-pointer inline-flex items-center">
+                                    <input type="checkbox" id="toggle-tugoc" onchange="toggleColumns()" class="mr-1"> Ẩn
+                                </label>
+                            </th>
+                            <th class="border border-gray-600 p-2 w-[120px]">
+                                <div class="font-bold mb-1">PHIÊN ÂM</div>
+                                <label class="text-[10px] bg-gray-700 px-1 py-0.5 rounded cursor-pointer inline-flex items-center">
+                                    <input type="checkbox" id="toggle-phienam" onchange="toggleColumns()" class="mr-1"> Ẩn
+                                </label>
+                            </th>
+                            <th class="border border-gray-600 p-2 w-[200px]">
+                                <div class="font-bold mb-1">NGHĨA</div>
+                                <label class="text-[10px] bg-gray-700 px-1 py-0.5 rounded cursor-pointer inline-flex items-center">
+                                    <input type="checkbox" id="toggle-nghia" onchange="toggleColumns()" class="mr-1"> Ẩn
+                                </label>
+                            </th>
+                            <th class="border border-gray-600 p-2 w-[150px] bg-blue-700">ĐIỀN TỪ</th>
+                            <th class="border border-gray-600 p-2 w-[80px]">CHECK</th>
+                        </tr>
+                    </thead>
+                    <tbody id="exam-body" class="bg-white"></tbody>
+                </table>
+            </div>
         </div>
     </div>
 
     <div id="result-screen" class="screen hidden container mx-auto p-4 flex items-center justify-center min-h-screen">
-        <div class="bg-white p-10 rounded-lg shadow-xl text-center max-w-lg w-full border-t-8 border-green-500">
-            <h2 class="text-3xl font-bold mb-4">Kết Quả</h2>
-            <div class="text-6xl font-black text-blue-600 mb-6"><span id="score-display">0</span>%</div>
-            <p id="result-message" class="text-lg font-bold mb-8"></p>
-            
+        <div class="bg-white p-8 rounded-lg shadow-xl text-center max-w-sm w-full border-t-8 border-green-500 mx-4">
+            <h2 class="text-2xl font-bold mb-4">Kết Quả</h2>
+            <div class="text-5xl font-black text-blue-600 mb-6"><span id="score-display">0</span>%</div>
+            <p id="result-message" class="text-base font-bold mb-8"></p>
             <div class="flex flex-col gap-3">
-                <button onclick="retryExam()" class="bg-blue-500 text-white font-bold py-3 rounded hover:bg-blue-600">Làm lại bộ đề này</button>
-                <button onclick="showExamList(currentLang)" class="bg-gray-500 text-white font-bold py-3 rounded hover:bg-gray-600">Về Danh Sách</button>
+                <button onclick="retryExam()" class="bg-blue-500 text-white font-bold py-3 rounded">Làm lại</button>
+                <button onclick="showExamList(currentLang)" class="bg-gray-500 text-white font-bold py-3 rounded">Danh sách</button>
             </div>
         </div>
     </div>
 
-    <div id="leaderboard-modal" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
-        <div class="bg-white p-6 rounded-lg shadow-xl w-[500px] max-w-full">
+    <div id="leaderboard-modal" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
             <div class="flex justify-between items-center mb-4 border-b pb-2">
-                <h3 class="text-2xl font-bold text-yellow-600">🏆 BẢNG XẾP HẠNG</h3>
-                <button onclick="closeLeaderboard()" class="text-gray-500 hover:text-red-500 text-2xl font-bold">&times;</button>
+                <h3 class="text-xl font-bold text-yellow-600">🏆 XẾP HẠNG</h3>
+                <button onclick="closeLeaderboard()" class="text-gray-500 text-2xl">&times;</button>
             </div>
-            <h4 id="lb-exam-name" class="text-center font-bold text-gray-700 mb-4 uppercase"></h4>
-            
-            <div class="bg-gray-50 rounded p-2 max-h-[300px] overflow-y-auto">
-                <table class="w-full text-left border-collapse">
+            <div class="max-h-[300px] overflow-y-auto">
+                <table class="w-full text-left border-collapse text-sm">
                     <thead>
-                        <tr class="bg-yellow-100 text-yellow-800">
+                        <tr class="bg-yellow-50">
                             <th class="p-2 border-b">TOP</th>
                             <th class="p-2 border-b">Tài Khoản</th>
-                            <th class="p-2 border-b text-right">Điểm Cao Nhất</th>
+                            <th class="p-2 border-b text-right">Điểm</th>
                         </tr>
                     </thead>
-                    <tbody id="lb-body">
-                        </tbody>
+                    <tbody id="lb-body"></tbody>
                 </table>
             </div>
-            <div class="mt-4 text-center">
-                <button onclick="closeLeaderboard()" class="bg-gray-800 text-white px-6 py-2 rounded font-bold hover:bg-gray-700">Đóng</button>
-            </div>
+            <button onclick="closeLeaderboard()" class="mt-4 w-full bg-gray-800 text-white py-2 rounded font-bold">Đóng</button>
         </div>
     </div>
 
