@@ -13,14 +13,23 @@ let hideTuGoc = false;
 let hidePhienAm = false;
 let hideNghia = false;
 
-// --- ĐIỀU HƯỚNG MÀN HÌNH ---
+// --- ĐIỀU HƯỚNG MÀN HÌNH (Đã Fix cho Mobile) ---
 function showScreen(screenId) {
     let screens = ['login-screen', 'dashboard-screen', 'exam-list-screen', 'exam-screen', 'result-screen'];
     screens.forEach(id => {
         const el = document.getElementById(id);
-        if(el) el.classList.add('hidden');
+        if(el) {
+            el.classList.add('hidden');
+            el.style.display = 'none'; // Ép ẩn hoàn toàn để không lỗi cuộn trên điện thoại
+        }
     });
-    document.getElementById(screenId).classList.remove('hidden');
+    
+    const target = document.getElementById(screenId);
+    if(target) {
+        target.classList.remove('hidden');
+        target.style.display = screenId === 'login-screen' ? 'flex' : 'block';
+        window.scrollTo(0, 0); // Tự động cuộn lên đầu trang (Fix lỗi bấm không ăn)
+    }
 }
 
 window.onload = function() {
@@ -125,34 +134,47 @@ async function confirmUpload(lang) {
     } catch (e) { alert("Lỗi up file!"); }
 }
 
-// --- DANH SÁCH BỘ ĐỀ & XÓA ---
+// --- DANH SÁCH BỘ ĐỀ & XÓA (Đã Fix cho Mobile) ---
 async function showExamList(lang) {
     currentLang = lang;
-    document.getElementById('list-title').textContent = "Danh sách bộ đề Tiếng " + lang;
+    document.getElementById('list-title').textContent = "Bộ đề Tiếng " + lang;
     let container = document.getElementById('exam-list-container');
-    container.innerHTML = "Đang tải..."; 
+    container.innerHTML = "<p class='text-center p-4'>⏳ Đang tải...</p>"; 
 
     try {
         let res = await fetch(`${API_URL}/exams/${lang}?user_id=${userId}`);
         let data = await res.json();
         container.innerHTML = ""; 
+        
         if (!data.data || data.data.length === 0) {
-            container.innerHTML = `<p class="italic text-center text-gray-500">Chưa có bộ đề nào.</p>`;
+            container.innerHTML = `<p class="italic text-center p-10 bg-white rounded shadow text-gray-500">Chưa có bộ đề nào ở đây.</p>`;
         } else {
             data.data.forEach(exam => {
                 let div = document.createElement('div');
-                div.className = "bg-white p-4 rounded-lg shadow border-l-4 border-blue-500 flex justify-between items-center mb-3";
+                // Ép hiển thị dạng cột trên Mobile, tự dãn hàng
+                div.className = "bg-white p-4 rounded-xl shadow-md border-l-8 border-blue-500 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-3";
                 
-                let shareBadge = exam.is_shared ? `<span class="bg-green-100 text-green-800 text-xs px-2 rounded ml-2">Cộng đồng</span>` : '';
-                let deleteBtn = exam.is_mine ? `<button onclick="deleteExam(${exam.id})" class="bg-red-500 text-white py-1 px-3 rounded hover:bg-red-600 font-bold transition">Xóa</button>` : '';
+                let shareBadge = exam.is_shared ? `<span class="bg-green-100 text-green-800 text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-tighter">Cộng đồng</span>` : '';
+                let deleteBtn = exam.is_mine ? `
+                    <button onclick="deleteExam(${exam.id})" class="bg-red-50 text-red-600 border border-red-200 py-2 px-4 rounded-lg font-bold text-sm active:bg-red-600 active:text-white transition-all">
+                        🗑️ Xóa
+                    </button>` : '';
 
                 div.innerHTML = `
-                    <div>
-                        <h3 class="font-bold text-lg inline-block">${exam.name}</h3> ${shareBadge}
+                    <div class="w-full md:w-auto">
+                        <div class="flex items-center gap-2">
+                            <h3 class="font-black text-lg text-gray-800">${exam.name}</h3>
+                            ${shareBadge}
+                        </div>
+                        <p class="text-xs text-gray-400 mt-1">${exam.is_mine ? 'Bộ đề của tôi' : 'Bộ đề chia sẻ'}</p>
                     </div>
-                    <div class="flex gap-2">
-                        <button onclick="startExam(${exam.id}, '${exam.name}')" class="bg-blue-500 text-white py-1 px-4 rounded font-bold hover:bg-blue-600 transition">Làm Bài</button>
-                        <button onclick="openLeaderboard(${exam.id}, '${exam.name}')" class="bg-yellow-500 text-white py-1 px-3 rounded font-bold hover:bg-yellow-600 transition">🏆 Hạng</button>
+                    <div class="flex flex-wrap gap-2 w-full md:w-auto justify-end">
+                        <button onclick="startExam(${exam.id}, '${exam.name}')" class="flex-1 md:flex-none bg-blue-600 text-white py-2 px-6 rounded-lg font-black shadow-md active:scale-95 transition-transform text-sm">
+                            🎯 LÀM BÀI
+                        </button>
+                        <button onclick="openLeaderboard(${exam.id}, '${exam.name}')" class="bg-yellow-100 text-yellow-700 border border-yellow-300 py-2 px-4 rounded-lg font-bold text-sm active:bg-yellow-500 active:text-white">
+                            🏆 HẠNG
+                        </button>
                         ${deleteBtn}
                     </div>
                 `;
@@ -160,7 +182,7 @@ async function showExamList(lang) {
             });
         }
         showScreen('exam-list-screen');
-    } catch (e) { alert("Lỗi lấy danh sách!"); }
+    } catch (e) { alert("Lỗi tải danh sách!"); }
 }
 
 async function deleteExam(examId) {
@@ -177,7 +199,6 @@ async function startExam(examId, examName) {
     currentExamId = examId;
     document.getElementById('exam-title').textContent = examName;
     
-    // Reset checkbox ẩn hiện
     document.getElementById('toggle-tugoc').checked = false;
     document.getElementById('toggle-phienam').checked = false;
     document.getElementById('toggle-nghia').checked = false;
@@ -203,7 +224,6 @@ function renderTable(data) {
     let tbody = document.getElementById('exam-body');
     tbody.innerHTML = "";
     
-    // Kiểm tra xem có đang dùng điện thoại không
     let isMobile = window.innerWidth < 768;
 
     data.forEach((item, index) => {
@@ -217,7 +237,6 @@ function renderTable(data) {
         let c_phienam = hidePhienAm ? "text-gray-400" : "text-black";
         let c_nghia = hideNghia ? "text-gray-400" : "text-black";
 
-        // TỰ ĐỘNG ĐIỀU CHỈNH SIZE CHỮ CHO MOBILE
         let isTrung = (currentLang === 'Trung');
         let sizeTuGoc = isMobile ? (isTrung ? "1.2rem" : "1rem") : (isTrung ? "1.5rem" : "1.1rem");
         let sizeInput = isMobile ? "0.9rem" : "1.1rem";
@@ -252,20 +271,19 @@ function handleEnter(event, input) {
         let checkCell = document.getElementById(`check-${index}`);
         let tuGocCell = document.getElementById(`tu-goc-${index}`);
         
-        // Hiện lại từ gốc
         tuGocCell.textContent = tuGoc;
         tuGocCell.classList.remove('text-gray-400');
         tuGocCell.classList.add('text-black');
 
-        // SO SÁNH: Gắn data-correct vào element thay vì gán chữ
+        // Gắn data-correct để chấm điểm, không phụ thuộc vào đoạn text hiển thị
         if (tuNhap.toLowerCase() === tuGoc.toLowerCase()) {
-            checkCell.setAttribute('data-correct', 'true'); // Cột mốc chấm điểm
-            checkCell.innerHTML = "✅ <span class='text-xs'>QUÁ GIỎI</span>"; 
-            checkCell.className = "border border-gray-400 p-2 text-center font-bold text-green-600 bg-green-50";
+            checkCell.setAttribute('data-correct', 'true');
+            checkCell.innerHTML = "✅ <br/><span class='text-[10px] md:text-xs'>QUÁ GIỎI</span>"; 
+            checkCell.className = "border border-gray-400 p-1 md:p-2 text-center font-bold text-green-600 bg-green-50";
         } else {
-            checkCell.setAttribute('data-correct', 'false'); // Cột mốc chấm điểm
-            checkCell.innerHTML = "❌ <span class='text-xs'>SAI RỒI</span>";
-            checkCell.className = "border border-gray-400 p-2 text-center font-bold text-red-600 bg-red-50";
+            checkCell.setAttribute('data-correct', 'false');
+            checkCell.innerHTML = "❌ <br/><span class='text-[10px] md:text-xs'>SAI RỒI</span>";
+            checkCell.className = "border border-gray-400 p-1 md:p-2 text-center font-bold text-red-600 bg-red-50";
         }
         
         let allInputs = Array.from(document.querySelectorAll('.word-input'));
@@ -280,16 +298,26 @@ function submitExam() {
     let correctCount = 0;
     
     inputs.forEach(input => {
-        if (!input.readOnly) {
+        if (!input.readOnly && input.value.trim() !== "") {
             handleEnter({ key: "Enter" }, input);
+        } else if (!input.readOnly && input.value.trim() === "") {
+             let index = input.getAttribute('data-index');
+             let checkCell = document.getElementById(`check-${index}`);
+             checkCell.setAttribute('data-correct', 'false');
+             checkCell.innerHTML = "❌ <br/><span class='text-[10px] md:text-xs'>SAI RỒI</span>";
+             checkCell.className = "border border-gray-400 p-1 md:p-2 text-center font-bold text-red-600 bg-red-100";
+             
+             let tuGocCell = document.getElementById(`tu-goc-${index}`);
+             tuGocCell.textContent = input.getAttribute('data-word');
+             tuGocCell.classList.remove('text-gray-400'); tuGocCell.classList.add('text-black');
+             
+             input.readOnly = true; input.classList.add('bg-gray-100');
         }
     });
 
     inputs.forEach(input => {
         let index = input.getAttribute('data-index');
         let checkCell = document.getElementById(`check-${index}`);
-        
-        // Đếm dựa trên cái nhãn data-correct tàng hình
         if (checkCell && checkCell.getAttribute('data-correct') === 'true') {
             correctCount++;
         }
@@ -299,7 +327,6 @@ function submitExam() {
     let ptram = total > 0 ? Math.round((correctCount / total) * 100) : 0;
     document.getElementById('score-display').textContent = ptram;
 
-    // Lưu điểm qua API Supabase
     fetch(`${API_URL}/save_result`, {
         method: 'POST', 
         headers: { 'Content-Type': 'application/json' },
@@ -309,7 +336,7 @@ function submitExam() {
     let msg = document.getElementById('result-message');
     if (ptram === 100) {
         msg.innerHTML = "🎉 Tuyệt hảo! Đúng 100% không trượt phát nào!";
-        msg.className = "text-xl font-bold mb-8 text-green-600";
+        msg.className = "text-xl font-bold mb-8 text-green-600 animate-pulse";
     } else {
         msg.innerHTML = `Bạn làm đúng ${ptram}%. Cố lên nhé! 💪`;
         msg.className = "text-lg font-bold mb-8 text-red-600";
@@ -324,40 +351,42 @@ function retryExam() {
     showScreen('exam-screen');
 }
 
-// --- API BẢNG XẾP HẠNG ---
+// --- API BẢNG XẾP HẠNG (Bắt lỗi chuẩn) ---
 async function openLeaderboard(examId, examName) {
     document.getElementById('lb-exam-name').textContent = examName;
-    document.getElementById('lb-body').innerHTML = `<tr><td colspan="3" class="text-center p-4">Đang lấy dữ liệu...</td></tr>`;
+    document.getElementById('lb-body').innerHTML = `<tr><td colspan="3" class="text-center p-4">⏳ Đang lấy dữ liệu...</td></tr>`;
     document.getElementById('leaderboard-modal').classList.remove('hidden');
 
     try {
         let res = await fetch(`${API_URL}/leaderboard/${examId}`);
+        if (!res.ok) throw new Error("Mạng lỗi");
         let data = await res.json();
         let tbody = document.getElementById('lb-body');
         tbody.innerHTML = "";
 
         if(!data.data || data.data.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="3" class="text-center p-4 text-gray-500">Chưa có ai thi bộ này!</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="3" class="text-center p-4 text-gray-500 italic">Chưa có ai thi bộ này! Hãy là người đầu tiên!</td></tr>`;
             return;
         }
 
         data.data.forEach((row, index) => {
-            let rankIcon = index === 0 ? "🥇" : (index === 1 ? "🥈" : (index === 2 ? "🥉" : `#${index+1}`));
+            let rankIcon = index === 0 ? "🥇" : (index === 1 ? "🥈" : (index === 2 ? "🥉" : `<span class="text-gray-500">#${index+1}</span>`));
             let tr = document.createElement('tr');
             tr.className = "border-b hover:bg-yellow-50";
             tr.innerHTML = `
                 <td class="p-2 font-bold text-xl text-center">${rankIcon}</td>
-                <td class="p-2 font-bold ${row.username === username ? 'text-blue-600' : ''}">${row.username} ${row.username === username ? '(Bạn)' : ''}</td>
+                <td class="p-2 font-bold ${row.username === username ? 'text-blue-600' : ''}">
+                    ${row.username} ${row.username === username ? '<span class="text-[10px] bg-blue-100 px-1 rounded">(Bạn)</span>' : ''}
+                </td>
                 <td class="p-2 text-right font-black text-green-600">${row.score}%</td>
             `;
             tbody.appendChild(tr);
         });
     } catch (e) {
-        document.getElementById('lb-body').innerHTML = `<tr><td colspan="3" class="text-center p-4 text-red-500">Lỗi lấy xếp hạng!</td></tr>`;
+        document.getElementById('lb-body').innerHTML = `<tr><td colspan="3" class="text-center p-4 text-red-500 font-bold">Lỗi lấy xếp hạng!</td></tr>`;
     }
 }
 
 function closeLeaderboard() {
     document.getElementById('leaderboard-modal').classList.add('hidden');
 }
-
