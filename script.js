@@ -233,22 +233,24 @@ function renderTable(data) {
 
 function handleEnter(event, input) {
     if (event.key === "Enter") {
-        let tuGoc = input.getAttribute('data-word');
-        let index = input.getAttribute('data-index');
+        let tuGoc = input.getAttribute('data-word').trim(); // Thêm trim() để bỏ dấu cách thừa
         let tuNhap = input.value.trim();
         
         input.readOnly = true; 
         input.classList.add('bg-gray-100');
 
+        let index = input.getAttribute('data-index');
         let checkCell = document.getElementById(`check-${index}`);
         let tuGocCell = document.getElementById(`tu-goc-${index}`);
         
+        // Hiện lại từ gốc
         tuGocCell.textContent = tuGoc;
         tuGocCell.classList.remove('text-gray-400');
         tuGocCell.classList.add('text-black');
 
+        // SO SÁNH CHÍNH XÁC:
         if (tuNhap.toLowerCase() === tuGoc.toLowerCase()) {
-            checkCell.textContent = "TRUE"; // Để logic chấm điểm đếm được
+            checkCell.textContent = "TRUE"; // Phải có chữ TRUE để hàm submitExam đếm được điểm
             checkCell.innerHTML = "✅ <span class='text-xs'>QUÁ GIỎI</span>"; 
             checkCell.className = "border border-gray-400 p-2 text-center font-bold text-green-600 bg-green-50";
         } else {
