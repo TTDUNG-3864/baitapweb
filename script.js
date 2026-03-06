@@ -1,4 +1,7 @@
-const API_URL = "/api";
+// --- TỰ ĐỘNG CẤU HÌNH API THEO MÔI TRƯỜNG ---
+const API_URL = window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost"
+    ? "http://127.0.0.1:5000/api"  // Nếu chạy trên Laptop
+    : "/api";                      // Nếu chạy trên Render
 
 let currentData = [];
 let currentLang = ""; 
@@ -420,3 +423,4 @@ document.addEventListener('visibilitychange', () => {
         }
     }
 });
+
