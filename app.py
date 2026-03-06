@@ -222,7 +222,9 @@ def get_leaderboard(exam_id):
         return jsonify({"status": "error", "message": "Lỗi lấy xếp hạng"}), 500
 
 if __name__ == '__main__':
-    # Chạy trên máy cá nhân (Laptop)
-    # Lát đẩy lên Render thì ông đổi lại thành: port = int(os.environ.get("PORT", 10000))
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host='0.0.0.0', port=port)
+    # Render sẽ cấp một cái PORT tự động, nếu không có (chạy ở Lap) thì dùng mặc định 5000
+    port = int(os.environ.get("PORT", 5000))
+    
+    # Khi đẩy lên Render thì để debug=False cho an toàn, chạy ở Lap thì để True
+    app.run(host='0.0.0.0', port=port, debug=False)
+    
