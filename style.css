@@ -16,7 +16,6 @@
     align-items: center !important;
 }
 
-/* --- 2. HIỆU ỨNG CHỮ 7 MÀU (Tươi sáng, không bị đen) --- */
 /* --- 2. HIỆU ỨNG CHỮ 7 MÀU (Bản gốc siêu mượt) --- */
 .text-rainbow {
     background: linear-gradient(to right, #ff0000, #ff7f00, #eab308, #22c55e, #3b82f6, #4f46e5, #a855f7) !important;
@@ -33,6 +32,7 @@
 @keyframes rainbow-shine {
     to { background-position: 200% center; }
 }
+
 /* --- 3. HỆ THỐNG NÚT BẤM 3D (Ép Đè Toàn Bộ Tailwind) --- */
 button {
     position: relative !important;
@@ -116,6 +116,7 @@ button.bg-gray-200, button.bg-gray-500, button.bg-gray-800 {
     border-bottom: 4px solid #b91c1c !important; /* 3D cho ô sai */
     text-shadow: 1px 1px 2px rgba(0,0,0,0.3) !important;
 }
+
 /* --- 7. FIX NÚT "HỦY" BỊ TÀNG HÌNH TRONG BẢNG UPLOAD --- */
 button[onclick="closeUploadModal()"] {
     background-color: #6b7280 !important; /* Màu xám đậm */
@@ -130,6 +131,7 @@ button[onclick="closeUploadModal()"]:active {
     top: 4px !important;
     box-shadow: 0px 1px 0px rgba(0,0,0,0.2), 0px 2px 3px rgba(0,0,0,0.15) !important;
 }
+
 /* --- 8. FORM ĐĂNG NHẬP 3D NEO-BRUTALISM --- */
 .input__container {
   position: relative;
@@ -235,4 +237,88 @@ button[onclick="closeUploadModal()"]:active {
   z-index: 4;
   border: 2px solid #000;
   box-shadow: 2px 2px 0 #000;
+}
+
+/* --- 9. FIX CSS CHO NÚT CÁI LOA TRONG BẢNG --- */
+button.btn-loa {
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 5px !important;
+    font-size: 1.2rem !important;
+    color: inherit !important;
+    transition: transform 0.1s !important;
+}
+
+button.btn-loa:active {
+    top: 0 !important; /* Không lún sâu như nút 3D bình thường */
+    box-shadow: none !important;
+    transform: scale(0.8) !important; /* Chỉ thu nhỏ lại tí cho có cảm giác bấm */
+}
+
+button.btn-loa:hover {
+    filter: drop-shadow(0px 0px 5px rgba(255, 215, 0, 0.8)) !important; /* Sáng lên màu vàng khi đưa chuột vào */
+}
+
+/* ==========================================
+   --- 10. CSS CHO NÚT 3 GẠCH (ADMIN MENU) ---
+========================================== */
+.burger {
+  position: relative;
+  width: 40px;
+  height: 30px;
+  background: transparent;
+  cursor: pointer;
+  display: block;
+}
+
+.burger input {
+  display: none;
+}
+
+.burger span {
+  display: block;
+  position: absolute;
+  height: 4px;
+  width: 100%;
+  background: black;
+  border-radius: 9px;
+  opacity: 1;
+  left: 0;
+  transform: rotate(0deg);
+  transition: .25s ease-in-out;
+}
+
+.burger span:nth-of-type(1) {
+  top: 0px;
+  transform-origin: left center;
+}
+
+.burger span:nth-of-type(2) {
+  top: 50%;
+  transform: translateY(-50%);
+  transform-origin: left center;
+}
+
+.burger span:nth-of-type(3) {
+  top: 100%;
+  transform-origin: left center;
+  transform: translateY(-100%);
+}
+
+.burger input:checked ~ span:nth-of-type(1) {
+  transform: rotate(45deg);
+  top: 0px;
+  left: 5px;
+}
+
+.burger input:checked ~ span:nth-of-type(2) {
+  width: 0%;
+  opacity: 0;
+}
+
+.burger input:checked ~ span:nth-of-type(3) {
+  transform: rotate(-45deg);
+  top: 28px;
+  left: 5px;
 }
