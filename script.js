@@ -5,9 +5,12 @@ const API_URL = window.location.hostname === "127.0.0.1" || window.location.host
 
 let currentData = [];
 let currentLang = ""; 
+
 // Dùng sessionStorage để tắt trình duyệt là tự out nick
 let userId = sessionStorage.getItem('vocab_user_id') || null; 
 let username = sessionStorage.getItem('vocab_username') || "";
+let userRole = sessionStorage.getItem('vocab_role') || 'user'; // LƯU QUYỀN ADMIN
+
 let pendingUploadFile = null;
 let currentExamId = null; 
 let isSharedOption = false;
@@ -15,6 +18,10 @@ let isSharedOption = false;
 let hideTuGoc = false;
 let hidePhienAm = false;
 let hideNghia = false;
+
+// BIẾN THÁCH ĐẤU & ĐẾM GIAN LẬN
+let peekCount = 0; 
+let inviteCheckInterval = null; 
 
 // --- ĐIỀU HƯỚNG MÀN HÌNH ---
 function showScreen(screenId) {
@@ -43,6 +50,8 @@ window.onload = function() {
     if (userId) {
         document.getElementById('display-name').textContent = username;
         showScreen('dashboard-screen');
+        checkAdminMenu(); 
+        startRadar(); // Bật radar lúc vào trang
     }
 };
 
@@ -66,21 +75,31 @@ async function login() {
         let res = await fetch(`${API_URL}/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: user, password: pass }) });
         let data = await res.json();
         if (data.status === "success") {
-            userId = data.user_id; username = user;
+            userId = data.user_id; 
+            username = user;
+            userRole = data.role;
+
             sessionStorage.setItem('vocab_user_id', userId);
             sessionStorage.setItem('vocab_username', username);
+            sessionStorage.setItem('vocab_role', userRole);
+
             document.getElementById('display-name').textContent = username;
             showScreen('dashboard-screen');
-            updateActivityTime(); // Bắt đầu tính giờ
+            updateActivityTime(); 
+            checkAdminMenu(); 
+            startRadar(); // Bật radar ngay khi đăng nhập
         } else { alert("Lỗi: " + data.message); }
     } catch (e) { alert("Lỗi Server! Nhớ bật app.py lên nhé."); }
 }
 
 function logout() {
-    userId = null; username = "";
+    userId = null; 
+    username = "";
+    userRole = "user";
     sessionStorage.clear();
     document.getElementById('username').value = "";
     document.getElementById('password').value = "";
+    if (inviteCheckInterval) clearInterval(inviteCheckInterval); // Tắt radar
     showScreen('login-screen');
 }
 
@@ -158,7 +177,8 @@ async function showExamList(lang) {
                 div.className = "bg-white p-4 rounded-xl shadow-md border-l-8 border-blue-500 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-3";
                 
                 let shareBadge = exam.is_shared ? `<span class="bg-green-100 text-green-800 text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-tighter">Cộng đồng</span>` : '';
-                let deleteBtn = exam.is_mine ? `
+                
+                let deleteBtn = (exam.is_mine || userRole === 'admin') ? `
                     <button type="button" onclick="deleteExam(${exam.id})" class="bg-red-50 text-red-600 border border-red-200 py-2 px-4 rounded-lg font-bold text-sm active:bg-red-600 active:text-white transition-all">
                         🗑️ Xóa
                     </button>` : '';
@@ -197,15 +217,25 @@ async function deleteExam(examId) {
     } catch (e) { alert("Lỗi khi xóa!"); }
 }
 
-// --- LOGIC LÀM BÀI ---
+// --- LOGIC LÀM BÀI MỚI (CÓ AUTO ẨN VÀ TÍNH ĐIỂM LIẾC BÀI) ---
 async function startExam(examId, examName) {
     currentExamId = examId;
     document.getElementById('exam-title').textContent = examName;
-    
+    peekCount = 0; // Reset bộ đếm gian lận
+
     document.getElementById('toggle-tugoc').checked = false;
     document.getElementById('toggle-phienam').checked = false;
     document.getElementById('toggle-nghia').checked = false;
-    toggleColumns(); 
+
+    // AUTO ẨN THEO NGÔN NGỮ
+    if (currentLang === 'Trung') {
+        document.getElementById('toggle-phienam').checked = true; // Trung -> Ẩn Phiên âm
+    } else if (currentLang === 'Anh') {
+        document.getElementById('toggle-tugoc').checked = true; // Anh -> Ẩn Từ gốc
+    }
+    
+    // Gọi hàm nhưng set true để không bị phạt lúc mới vào
+    toggleColumns(true); 
     
     try {
         let res = await fetch(`${API_URL}/exam/${examId}`);
@@ -216,11 +246,23 @@ async function startExam(examId, examName) {
     } catch (e) { alert("Lỗi tải đề!"); }
 }
 
-function toggleColumns() {
-    hideTuGoc = document.getElementById('toggle-tugoc').checked;
-    hidePhienAm = document.getElementById('toggle-phienam').checked;
-    hideNghia = document.getElementById('toggle-nghia').checked;
-    renderTable(currentData); 
+function toggleColumns(isSetup = false) {
+    let newHideTuGoc = document.getElementById('toggle-tugoc').checked;
+    let newHidePhienAm = document.getElementById('toggle-phienam').checked;
+    let newHideNghia = document.getElementById('toggle-nghia').checked;
+
+    // TÍNH ĐIỂM PHẠT: Đang Ẩn (true) mà chuyển sang Hiện (false) -> Phạt 1 lần
+    if (!isSetup) {
+        if (hideTuGoc && !newHideTuGoc) peekCount++;
+        if (hidePhienAm && !newHidePhienAm) peekCount++;
+        if (hideNghia && !newHideNghia) peekCount++;
+    }
+
+    hideTuGoc = newHideTuGoc;
+    hidePhienAm = newHidePhienAm;
+    hideNghia = newHideNghia;
+
+    if (!isSetup) renderTable(currentData); 
 }
 
 function renderTable(data) {
@@ -247,8 +289,16 @@ function renderTable(data) {
         let fontTuGoc = isTrung ? `font-family: 'KaiTi', 'STKaiti', serif; font-size: ${sizeTuGoc};` : `font-size: ${sizeTuGoc};`;
         let fontInput = isTrung ? `font-family: 'KaiTi', 'STKaiti', serif; font-size: ${sizeInput};` : `font-size: ${sizeInput};`;
 
+        let safeWord = item.tu_goc.replace(/'/g, "\\'");
+        let loaIcon = `<button type="button" onclick="speakWord('${safeWord}')" class="btn-loa" title="Nghe phát âm" style="background: transparent !important; box-shadow: none !important; border: none !important; padding: 0 5px !important; color: inherit !important; font-size: 1.2rem !important; cursor: pointer;">🔊</button>`;
+
         tr.innerHTML = `
-            <td class="border border-gray-400 p-1 md:p-2 text-center ${c_tugoc}" id="tu-goc-${index}" style="${fontTuGoc}">${t_tugoc}</td>
+            <td class="border border-gray-400 p-1 md:p-2 text-center ${c_tugoc}" id="tu-goc-${index}" style="${fontTuGoc}">
+                <div class="flex items-center justify-center gap-1 md:gap-2">
+                    <span>${t_tugoc}</span>
+                    ${loaIcon}
+                </div>
+            </td>
             <td class="border border-gray-400 p-1 md:p-2 text-center ${c_phienam}" style="font-size: ${isMobile ? '0.8rem' : '1rem'}">${t_phienam}</td>
             <td class="border border-gray-400 p-1 md:p-2 text-left ${c_nghia}" style="font-size: ${isMobile ? '0.8rem' : '1rem'}">${t_nghia}</td>
             <td class="border border-gray-400 p-0" style="width: ${isMobile ? '80px' : 'auto'}">
@@ -274,7 +324,9 @@ function handleEnter(event, input) {
         let checkCell = document.getElementById(`check-${index}`);
         let tuGocCell = document.getElementById(`tu-goc-${index}`);
         
-        tuGocCell.textContent = tuGoc;
+        let safeWord = tuGoc.replace(/'/g, "\\'");
+        let loaIcon = `<button type="button" onclick="speakWord('${safeWord}')" class="btn-loa" title="Nghe phát âm" style="background: transparent !important; box-shadow: none !important; border: none !important; padding: 0 5px !important; color: inherit !important; font-size: 1.2rem !important; cursor: pointer;">🔊</button>`;
+        tuGocCell.innerHTML = `<div class="flex items-center justify-center gap-1 md:gap-2"><span>${tuGoc}</span>${loaIcon}</div>`;
         tuGocCell.classList.remove('text-gray-400');
         tuGocCell.classList.add('text-black');
 
@@ -282,6 +334,7 @@ function handleEnter(event, input) {
             checkCell.setAttribute('data-correct', 'true');
             checkCell.innerHTML = "✅ <br/><span class='text-[10px] md:text-xs'>QUÁ GIỎI</span>"; 
             checkCell.className = "border border-gray-400 p-1 md:p-2 text-center font-bold text-green-600 bg-green-50";
+            speakWord(tuGoc);
         } else {
             checkCell.setAttribute('data-correct', 'false');
             checkCell.innerHTML = "❌ <br/><span class='text-[10px] md:text-xs'>SAI RỒI</span>";
@@ -309,7 +362,11 @@ function submitExam() {
              checkCell.className = "border border-gray-400 p-1 md:p-2 text-center font-bold text-red-600 bg-red-100";
              
              let tuGocCell = document.getElementById(`tu-goc-${index}`);
-             tuGocCell.textContent = input.getAttribute('data-word');
+             let tuGoc = input.getAttribute('data-word');
+             let safeWord = tuGoc.replace(/'/g, "\\'");
+             let loaIcon = `<button type="button" onclick="speakWord('${safeWord}')" class="btn-loa" title="Nghe phát âm" style="background: transparent !important; box-shadow: none !important; border: none !important; padding: 0 5px !important; color: inherit !important; font-size: 1.2rem !important; cursor: pointer;">🔊</button>`;
+             
+             tuGocCell.innerHTML = `<div class="flex items-center justify-center gap-1 md:gap-2"><span>${tuGoc}</span>${loaIcon}</div>`;
              tuGocCell.classList.remove('text-gray-400'); tuGocCell.classList.add('text-black');
              
              input.readOnly = true; input.classList.add('bg-gray-100');
@@ -325,21 +382,26 @@ function submitExam() {
     });
 
     let total = inputs.length;
-    let ptram = total > 0 ? Math.round((correctCount / total) * 100) : 0;
-    document.getElementById('score-display').textContent = ptram;
+    let originScore = total > 0 ? Math.round((correctCount / total) * 100) : 0;
+    
+    // TRỪ ĐIỂM: Mỗi lần nhìn trộm trừ 5%
+    let penalty = peekCount * 5;
+    let finalScore = Math.max(0, originScore - penalty);
+
+    document.getElementById('score-display').textContent = finalScore;
 
     fetch(`${API_URL}/save_result`, {
         method: 'POST', 
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: userId, exam_id: currentExamId, score: ptram })
+        body: JSON.stringify({ user_id: userId, exam_id: currentExamId, score: finalScore })
     }).catch(err => console.error("Lỗi lưu điểm:", err));
 
     let msg = document.getElementById('result-message');
-    if (ptram === 100) {
-        msg.innerHTML = "🎉 Tuyệt hảo! Đúng 100% không trượt phát nào!";
+    if (finalScore === 100 && peekCount === 0) {
+        msg.innerHTML = "🎉 Tuyệt hảo! 100% không xài phao!";
         msg.className = "text-xl font-bold mb-8 text-green-600 animate-pulse";
     } else {
-        msg.innerHTML = `Bạn làm đúng ${ptram}%. Cố lên nhé! 💪`;
+        msg.innerHTML = `Làm đúng ${originScore}%. Bị trừ ${penalty}% vì xem trộm ${peekCount} lần.<br>=> Điểm cuối: ${finalScore}%`;
         msg.className = "text-lg font-bold mb-8 text-red-600";
     }
 
@@ -424,3 +486,256 @@ document.addEventListener('visibilitychange', () => {
     }
 });
 
+// --- TÍNH NĂNG PHÁT ÂM (TEXT-TO-SPEECH) ---
+function speakWord(text) {
+    if (!('speechSynthesis' in window)) {
+        alert("Trình duyệt không hỗ trợ phát âm!");
+        return;
+    }
+    window.speechSynthesis.cancel();
+    let msg = new SpeechSynthesisUtterance();
+    msg.text = text;
+    if (currentLang === 'Trung') {
+        msg.lang = 'zh-CN'; 
+    } else if (currentLang === 'Anh') {
+        msg.lang = 'en-US'; 
+    } else {
+        msg.lang = 'vi-VN';
+    }
+    msg.rate = 0.85; 
+    window.speechSynthesis.speak(msg);
+}
+
+// ==========================================
+// --- MẮT THẦN ADMIN (THEO DÕI HỌC SINH) ---
+// ==========================================
+
+function checkAdminMenu() {
+    let burger = document.getElementById('admin-burger');
+    if (burger) {
+        if (userRole === 'admin') {
+            burger.classList.remove('hidden');
+        } else {
+            burger.classList.add('hidden');
+        }
+    }
+}
+
+async function openAdminPanel() {
+    document.getElementById('admin-modal').classList.remove('hidden');
+    
+    let dateInput = document.getElementById('admin-date');
+    if (!dateInput.value) {
+        let today = new Date();
+        let yyyy = today.getFullYear();
+        let mm = String(today.getMonth() + 1).padStart(2, '0');
+        let dd = String(today.getDate()).padStart(2, '0');
+        dateInput.value = `${yyyy}-${mm}-${dd}`;
+    }
+    
+    fetchAdminData();
+}
+
+async function fetchAdminData() {
+    let tbody = document.getElementById('admin-tbody');
+    tbody.innerHTML = `<tr><td colspan="4" class="text-center p-4">⏳ Đang hack vào hệ thống...</td></tr>`;
+
+    let selectedDate = document.getElementById('admin-date').value; 
+
+    try {
+        let res = await fetch(`${API_URL}/admin/activities?date=${selectedDate}`);
+        let data = await res.json();
+        tbody.innerHTML = "";
+
+        if(data.data.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="4" class="text-center p-8 font-bold text-gray-500 text-lg">Hôm nay không có đứa nào học bài cả! 😅</td></tr>`;
+            return;
+        }
+
+        data.data.forEach(row => {
+            let timeStr = row.ngay_lam ? new Date(row.ngay_lam).toLocaleString('vi-VN') : "Gần đây";
+            let hs = row.users ? row.users.username : "Vô danh";
+            let bo = row.bo_tu_vung ? row.bo_tu_vung.ten_bo : "Đã bị xóa";
+            let diemColor = row.diem_so >= 80 ? 'text-green-600' : (row.diem_so < 50 ? 'text-red-600' : 'text-yellow-600');
+
+            tbody.innerHTML += `
+                <tr class="border-b hover:bg-gray-50 text-sm md:text-base">
+                    <td class="p-2 md:p-3 font-bold">${hs}</td>
+                    <td class="p-2 md:p-3">${bo}</td>
+                    <td class="p-2 md:p-3 font-black ${diemColor}">${row.diem_so}%</td>
+                    <td class="p-2 md:p-3 text-xs md:text-sm text-gray-500">${timeStr}</td>
+                </tr>
+            `;
+        });
+    } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="4" class="text-center p-4 text-red-500 font-bold">Lỗi truy xuất dữ liệu!</td></tr>`;
+    }
+}
+
+function closeAdminPanel() {
+    document.getElementById('admin-modal').classList.add('hidden');
+    let burgerCheckbox = document.getElementById('burger');
+    if(burgerCheckbox) burgerCheckbox.checked = false; 
+}
+
+
+// ==============================================
+// --- LOGIC MỞ TRẠM THÁCH ĐẤU TỪ MÀN HÌNH CHÍNH ---
+// ==============================================
+
+let onlineUsersData = [];
+let pendingInviteExam = null;
+
+// Khởi động radar bắt sóng người onl
+function startRadar() {
+    if (inviteCheckInterval) clearInterval(inviteCheckInterval);
+    inviteCheckInterval = setInterval(async () => {
+        if (!userId) return;
+        try {
+            let res = await fetch(`${API_URL}/ping`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: userId, username: username })
+            });
+            let data = await res.json();
+            onlineUsersData = data.online_users;
+
+            // Bắt được sóng thách đấu
+            if (data.invite) {
+                document.getElementById('invite-message').innerHTML = `<span class="text-blue-600">${data.invite.from_username}</span> đang thách đấu bạn bộ đề <br/><span class="text-purple-600 font-black uppercase">${data.invite.exam_name}</span> !`;
+                pendingInviteExam = data.invite;
+                document.getElementById('receive-invite-modal').classList.remove('hidden');
+                
+                fetch(`${API_URL}/clear_invite`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId })
+                });
+            }
+        } catch(e) {}
+    }, 5000); // 5 giây quét 1 lần
+}
+
+async function openGlobalChallenge() {
+    document.getElementById('invite-modal').classList.remove('hidden');
+    
+    let selectEl = document.getElementById('challenge-exam-select');
+    selectEl.innerHTML = `<option value="">⏳ Đang tải đề...</option>`;
+    
+    try {
+        let [resAnh, resTrung] = await Promise.all([
+            fetch(`${API_URL}/exams/Anh?user_id=${userId}`),
+            fetch(`${API_URL}/exams/Trung?user_id=${userId}`)
+        ]);
+        let dataAnh = await resAnh.json();
+        let dataTrung = await resTrung.json();
+        
+        selectEl.innerHTML = "";
+        let hasExams = false;
+
+        if (dataAnh.data && dataAnh.data.length > 0) {
+            let group = document.createElement('optgroup');
+            group.label = "🇺🇸 Tiếng Anh";
+            dataAnh.data.forEach(ex => {
+                let opt = document.createElement('option');
+                opt.value = ex.id;
+                opt.setAttribute('data-lang', 'Anh');
+                opt.textContent = ex.name;
+                group.appendChild(opt);
+            });
+            selectEl.appendChild(group);
+            hasExams = true;
+        }
+        
+        if (dataTrung.data && dataTrung.data.length > 0) {
+            let group = document.createElement('optgroup');
+            group.label = "🇨🇳 Tiếng Trung";
+            dataTrung.data.forEach(ex => {
+                let opt = document.createElement('option');
+                opt.value = ex.id;
+                opt.setAttribute('data-lang', 'Trung');
+                opt.textContent = ex.name;
+                group.appendChild(opt);
+            });
+            selectEl.appendChild(group);
+            hasExams = true;
+        }
+
+        if (!hasExams) {
+            selectEl.innerHTML = `<option value="">❌ Bạn chưa có bộ đề nào!</option>`;
+        }
+    } catch(e) {
+        selectEl.innerHTML = `<option value="">❌ Lỗi tải đề</option>`;
+    }
+
+    renderOnlineUsersForChallenge();
+}
+
+function renderOnlineUsersForChallenge() {
+    let listDiv = document.getElementById('online-users-list');
+    listDiv.innerHTML = "";
+    
+    if (onlineUsersData.length === 0) {
+        listDiv.innerHTML = `<p class="text-gray-500 font-bold italic py-4 text-center">Chưa có ai online lúc này...</p>`;
+    } else {
+        onlineUsersData.forEach(u => {
+            listDiv.innerHTML += `
+                <div class="flex justify-between items-center bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+                    <span class="font-bold text-green-600 flex items-center gap-2">
+                        <span class="relative flex h-3 w-3">
+                          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                          <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                        </span>
+                        ${u.username}
+                    </span>
+                    <button onclick="sendGlobalChallenge('${u.user_id}')" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-black text-sm shadow border-b-4 border-red-700 active:border-b-0 active:mt-1 transition-all">CHIẾN</button>
+                </div>
+            `;
+        });
+    }
+}
+
+async function sendGlobalChallenge(targetUserId) {
+    let selectEl = document.getElementById('challenge-exam-select');
+    let examId = selectEl.value;
+    
+    if(!examId) return alert("Vui lòng chọn bộ đề làm vũ khí trước!");
+    
+    let selectedOption = selectEl.options[selectEl.selectedIndex];
+    let examName = selectedOption.textContent;
+    let examLang = selectedOption.getAttribute('data-lang');
+
+    document.getElementById('invite-modal').classList.add('hidden');
+    
+    await fetch(`${API_URL}/invite`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            to_user_id: targetUserId,
+            from_user_id: userId,
+            from_username: username,
+            exam_id: examId,
+            exam_name: examName,
+            lang: examLang
+        })
+    });
+    
+    alert("⚔️ Đã ném thư thách đấu! Cùng vào phòng thi nào!");
+    
+    currentLang = examLang; 
+    startExam(examId, examName);
+}
+
+// Chấp nhận / Từ chối lời mời
+function acceptInvite() {
+    document.getElementById('receive-invite-modal').classList.add('hidden');
+    if (pendingInviteExam) {
+        currentLang = pendingInviteExam.lang; 
+        startExam(pendingInviteExam.exam_id, pendingInviteExam.exam_name);
+    }
+}
+
+function rejectInvite() {
+    document.getElementById('receive-invite-modal').classList.add('hidden');
+    pendingInviteExam = null;
+}
