@@ -50,7 +50,7 @@ def register():
         print("Lỗi đăng ký:", e)
         return jsonify({"status": "error", "message": "Lỗi kết nối CSDL!"}), 500
 
-# --- ĐĂNG NHẬP ---
+# --- ĐĂNG NHẬP (ĐÃ THÊM CHỨC NĂNG NHẬN DIỆN ADMIN) ---
 @app.route('/api/login', methods=['POST'])
 def login():
     data = request.json
@@ -58,7 +58,16 @@ def login():
         res = supabase.table('users').select('*').eq('username', data.get('username')).eq('password', data.get('password')).execute()
         if len(res.data) > 0:
             user = res.data[0]
-            return jsonify({"status": "success", "user_id": user['id'], "username": user['username']})
+            
+            # Đọc đúng tên cột 'role' trong Supabase của ông
+            role = user.get('role', 'user')
+            
+            return jsonify({
+                "status": "success", 
+                "user_id": user['id'], 
+                "username": user['username'],
+                "role": role  
+            })
         return jsonify({"status": "error", "message": "Sai tài khoản hoặc mật khẩu!"}), 401
     except Exception as e:
         print("Lỗi đăng nhập:", e)
@@ -201,7 +210,6 @@ def save_result():
 def get_leaderboard(exam_id):
     try:
         # Lấy lịch sử học kèm thông tin username
-        # Supabase cho phép JOIN bảng thông qua cú pháp lồng nhau: users(username)
         res = supabase.table('lich_su_hoc').select('diem_so, users(username)').eq('bo_id', exam_id).execute()
         
         # Gom nhóm và tìm max điểm bằng Python
@@ -221,10 +229,119 @@ def get_leaderboard(exam_id):
         print("Lỗi bảng xếp hạng:", e)
         return jsonify({"status": "error", "message": "Lỗi lấy xếp hạng"}), 500
 
+# --- TÍNH NĂNG ADMIN MỚI: XEM LỊCH SỬ HOẠT ĐỘNG (FIX LỆCH MÚI GIỜ) ---
+@app.route('/api/admin/activities', methods=['GET'])
+def get_admin_activities():
+    import datetime # Import thư viện tính giờ ngay đây cho tiện, khỏi sợ thiếu
+    
+    # Lấy ngày web gửi lên (VD: "2026-03-08")
+    target_date = request.args.get('date') 
+    
+    try:
+        lich_su_res = supabase.table('lich_su_hoc').select('*').execute()
+        users_res = supabase.table('users').select('id, username').execute()
+        bo_res = supabase.table('bo_tu_vung').select('id, ten_bo').execute()
+        
+        user_dict = {u['id']: u['username'] for u in users_res.data}
+        bo_dict = {b['id']: b['ten_bo'] for b in bo_res.data}
+        
+        activities = []
+        for row in lich_su_res.data:
+            ngay_lam = str(row.get('ngay_lam', ''))
+            
+            # --- BỘ LỌC ÉP MÚI GIỜ VIỆT NAM (UTC+7) ---
+            if target_date and ngay_lam:
+                try:
+                    # Lấy chuỗi thời gian chuẩn của Supabase (VD: 2026-03-07T17:36:57.123)
+                    clean_time = ngay_lam.replace('T', ' ')[:19] 
+                    # Biến thành đối tượng thời gian
+                    dt_utc = datetime.datetime.strptime(clean_time, '%Y-%m-%d %H:%M:%S')
+                    # Cộng thêm 7 tiếng để ra giờ Việt Nam
+                    dt_vn = dt_utc + datetime.timedelta(hours=7) 
+                    # Rút ra mỗi ngày/tháng/năm để so sánh
+                    vn_date_str = dt_vn.strftime('%Y-%m-%d')
+                    
+                    # So sánh ngày Việt Nam với cái ngày ông đang chọn trên lịch
+                    if vn_date_str != target_date:
+                        continue # Nếu không khớp ngày thì bỏ qua, không lấy dòng này
+                except Exception as e:
+                    # Fallback lỡ có dòng nào bị lỗi format
+                    if not ngay_lam.startswith(target_date):
+                        continue
+                        
+            activities.append({
+                "diem_so": row.get('diem_so', 0),
+                "ngay_lam": row.get('ngay_lam', None),
+                "users": {
+                    "username": user_dict.get(row.get('user_id'), "Vô danh")
+                },
+                "bo_tu_vung": {
+                    "ten_bo": bo_dict.get(row.get('bo_id'), "Đã bị xóa")
+                }
+            })
+            
+        activities.reverse()
+        return jsonify({"status": "success", "data": activities[:50]})
+    except Exception as e:
+        print("Lỗi lấy lịch sử Admin:", e)
+        return jsonify({"status": "error", "message": "Lỗi Backend: " + str(e)}), 500
+
+# =========================================================
+# --- HỆ THỐNG RADAR ONLINE VÀ THÁCH ĐẤU ---
+# =========================================================
+# Bộ nhớ tạm lưu trạng thái người dùng (Reset khi tắt server)
+online_users = {} # {user_id: {"username": "Dũng", "last_ping": 123456789}}
+invitations = {}  # {to_user_id: {"from_username": "Dũng", "exam_id": 1, "exam_name": "Đề 1", "lang": "Anh"}}
+
+@app.route('/api/ping', methods=['POST'])
+def ping():
+    data = request.json
+    user_id = str(data.get('user_id'))
+    
+    # 1. Cập nhật thời gian online của người này
+    online_users[user_id] = {
+        "username": data.get('username'),
+        "last_ping": time.time()
+    }
+    
+    # 2. Lọc ra những người đang online (ping trong vòng 10 giây qua)
+    current_time = time.time()
+    active_users = []
+    for uid, info in online_users.items():
+        if current_time - info['last_ping'] < 10 and uid != user_id:
+            active_users.append({"user_id": uid, "username": info['username']})
+            
+    # 3. Kiểm tra xem mình có đang bị ai thách đấu không
+    my_invite = invitations.get(user_id)
+    
+    return jsonify({
+        "status": "success", 
+        "online_users": active_users,
+        "invite": my_invite
+    })
+
+@app.route('/api/invite', methods=['POST'])
+def send_invite():
+    data = request.json
+    to_user = str(data.get('to_user_id'))
+    invitations[to_user] = {
+        "from_username": data.get('from_username'),
+        "exam_id": data.get('exam_id'),
+        "exam_name": data.get('exam_name'),
+        "lang": data.get('lang')
+    }
+    return jsonify({"status": "success"})
+
+@app.route('/api/clear_invite', methods=['POST'])
+def clear_invite():
+    user_id = str(request.json.get('user_id'))
+    if user_id in invitations:
+        del invitations[user_id]
+    return jsonify({"status": "success"})
+    
 if __name__ == '__main__':
     # Render sẽ cấp một cái PORT tự động, nếu không có (chạy ở Lap) thì dùng mặc định 5000
     port = int(os.environ.get("PORT", 5000))
     
     # Khi đẩy lên Render thì để debug=False cho an toàn, chạy ở Lap thì để True
     app.run(host='0.0.0.0', port=port, debug=False)
-    
